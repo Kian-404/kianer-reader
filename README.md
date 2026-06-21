@@ -155,11 +155,11 @@ kianer/
 │   │       ├── glass.less          # 毛玻璃全局样式
 │   │       └── variables.css       # CSS 变量
 │   ├── views/
-│   │       ├── HomePage.vue        # 书架首页
-│   │       ├── ReaderPage.vue      # 阅读器
-│   │       ├── Tab2Page.vue        # 阅读洞察
-│   │       ├── Tab3Page.vue        # 个人中心
-│   │       └── TabsPage.vue        # 底部 Tab 容器
+│   │       ├── InsightsPage.vue      # 阅读洞察
+│   │       ├── LibraryPage.vue        # 书架首页
+│   │       ├── ProfilePage.vue        # 个人中心
+│   │       ├── ReaderPage.vue         # 阅读器
+│   │       └── TabsPage.vue           # 底部 Tab 容器
 │   ├── router/
 │   │       └── index.ts
 │   ├── main.ts
