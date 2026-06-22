@@ -84,34 +84,6 @@
         <span class="brightness-value">{{ readerStore.brightness }}%</span>
       </div>
     </div>
-
-    <div v-if="!isPdf" class="setting-item pdf-zoom-item">
-      <span class="label">PDF 缩放</span>
-      <div class="zoom-ctrl">
-        <el-button
-          circle
-          size="small"
-          :disabled="readerStore.pdfScale <= 0.5"
-          @click="changePdfZoom(-0.1)"
-        >
-          <template #icon>
-            <Icon icon="solar:minus-circle-linear" style="font-size: 18px" />
-          </template>
-        </el-button>
-        <span class="zoom-val">{{ Math.round(readerStore.pdfScale * 100) }}%</span>
-        <el-button
-          circle
-          size="small"
-          :disabled="readerStore.pdfScale >= 3.0"
-          @click="changePdfZoom(0.1)"
-        >
-          <template #icon>
-            <Icon icon="solar:add-circle-linear" style="font-size: 18px" />
-          </template>
-        </el-button>
-        <el-button size="small" @click="resetPdfZoom" class="reset-btn">重置</el-button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -150,7 +122,6 @@ const fonts = [
 const emit = defineEmits<{
   (e: 'pagination-change'): void;
   (e: 'size-change'): void;
-  (e: 'zoom-change'): void;
 }>();
 
 /**
@@ -213,19 +184,6 @@ const handleBrightnessChange = (value: number) => {
   } else if (value > 100) {
     readerStore.brightness = 100;
   }
-};
-
-const changePdfZoom = (delta: number) => {
-  const newZoom = Math.round((readerStore.pdfScale + delta) * 10) / 10;
-  if (newZoom >= 0.5 && newZoom <= 3.0) {
-    (readerStore as any).pdfScale = newZoom;
-    emit('zoom-change');
-  }
-};
-
-const resetPdfZoom = () => {
-  (readerStore as any).pdfScale = 1.0;
-  emit('zoom-change');
 };
 </script>
 

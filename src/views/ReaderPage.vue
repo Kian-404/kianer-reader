@@ -156,7 +156,6 @@
           :book-format="book?.format"
           @pagination-change="handlePaginationChange" 
           @size-change="handleSizeChange" 
-          @zoom-change="handleZoomChange"
         />
       </el-drawer>
 
@@ -545,12 +544,6 @@ const handlePaginationChange = () => {
 
 const handleSizeChange = () => {
   // PDF 需要特殊处理
-  if (book.value?.format === 'pdf') {
-    pdfEngine.handlePaginationChange();
-  }
-};
-
-const handleZoomChange = () => {
   if (book.value?.format === 'pdf') {
     pdfEngine.handlePaginationChange();
   }
