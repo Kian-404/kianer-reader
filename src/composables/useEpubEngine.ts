@@ -58,17 +58,20 @@ export function useEpubEngine(bookId: string) {
   const injectFontFamily = () => {
     if (!rendition.value) return;
     try {
-      const content = rendition.value.getContents();
-      if (!content?.document?.head) return;
+      const contents = (rendition.value as any).getContents() as any[];
+      if (!contents || contents.length === 0) return;
       const css = `body, p, span, div, h1, h2, h3, h4, h5, h6 { font-family: ${readerStore.fontFamily} !important; }`;
-      const doc = content.document;
-      let style = doc.getElementById('kdf-font') as HTMLStyleElement;
-      if (!style) {
-        style = doc.createElement('style');
-        style.id = 'kdf-font';
-        doc.head.appendChild(style);
+      for (const content of contents) {
+        if (!content?.document?.head) continue;
+        const doc = content.document;
+        let style = doc.getElementById('kdf-font') as HTMLStyleElement;
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'kdf-font';
+          doc.head.appendChild(style);
+        }
+        style.textContent = css;
       }
-      style.textContent = css;
     } catch (e) {
       console.warn('Cannot inject font-family into EPUB content', e);
     }
