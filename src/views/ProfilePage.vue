@@ -114,6 +114,9 @@ import { useLibraryStore } from '@/stores/library';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import localforage from 'localforage';
 import { useDark } from '@vueuse/core';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 const libraryStore = useLibraryStore();
 const importInput = ref<HTMLInputElement | null>(null);
@@ -171,17 +174,41 @@ const exportData = async () => {
       });
     }
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kianer-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const fileName = `kianer-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
-    ElMessage.success(`已导出 ${books.length} 本书`);
+    const isNative = Capacitor.isNativePlatform();
+    if (isNative && Capacitor.isPluginAvailable('Filesystem') && Capacitor.isPluginAvailable('Share')) {
+      // Native 平台：写入缓存目录，再用 Share 弹窗让用户选择保存位置
+      await Filesystem.writeFile({
+        path: fileName,
+        data: jsonStr,
+        directory: Directory.Cache,
+      });
+      const fileResult = await Filesystem.getUri({
+        path: fileName,
+        directory: Directory.Cache,
+      });
+      await Share.share({
+        title: 'Kianer Reader 数据备份',
+        text: `共 ${books.length} 本书的备份文件`,
+        files: [fileResult.uri],
+        dialogTitle: '保存备份文件',
+      });
+      ElMessage.success(`已导出 ${books.length} 本书`);
+    } else {
+      // 浏览器降级：Blob 下载
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      ElMessage.success(`已导出 ${books.length} 本书`);
+    }
   } catch (e) {
     console.error('Export failed:', e);
     ElMessage.error('导出失败');
