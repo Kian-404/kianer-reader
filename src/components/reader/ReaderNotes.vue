@@ -35,13 +35,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
+import type { Note } from '@/stores/library';
 
 const props = defineProps<{
-  notes?: any[];
+  notes?: Note[];
 }>();
 
 defineEmits<{
-  (e: 'jump', note: any): void;
+  (e: 'jump', note: Note): void;
   (e: 'remove', id: string): void;
 }>();
 

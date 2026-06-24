@@ -151,10 +151,15 @@ const exportData = async () => {
       const raw = await localforage.getItem<any>(`book-data-${book.id}`);
       let base64 = '';
       if (raw) {
-        const bytes = raw instanceof Blob ? new Uint8Array(await raw.arrayBuffer()) : new Uint8Array(raw);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        base64 = btoa(binary);
+        const blob = raw instanceof Blob ? raw : new Blob([raw]);
+        base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]); // 去掉 "data:...;base64," 前缀
+          };
+          reader.readAsDataURL(blob);
+        });
       }
       exportData.books.push({ ...book, _fileDataBase64: base64 });
     }

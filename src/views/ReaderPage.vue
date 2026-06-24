@@ -193,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { IonPage, onIonViewDidEnter } from '@ionic/vue';
 import { Icon } from '@iconify/vue';
@@ -249,11 +249,18 @@ const selectionCfi = ref('');
 const selectionText = ref('');
 const noteComment = ref('');
 const noteColor = ref('#ffe082');
+/** 替代 (window as any)._txtNotePage，记录 TXT 选中文字所在页码 */
+const txtNotePage = ref(0);
 
 // Engines
 const epubEngine = useEpubEngine(bookId);
 const pdfEngine = usePdfEngine(bookId);
 const txtEngine = useTxtEngine(bookId);
+
+// 阅读器 night 主题同步 App 深色模式，使抽屉（目录/搜索/笔记等）背景也变暗
+watch(() => readerStore.theme, (theme) => {
+  document.documentElement.classList.toggle('ion-palette-dark', theme === 'night');
+}, { immediate: true });
 
 /**
  * 获取当前活跃的引擎
@@ -386,10 +393,17 @@ const bindEngineEvents = () => {
   });
 };
 
+/** 用于存储 TXT 选择事件清理函数，翻页或卸载时解除绑定 */
+let txtSelectionCleanup: (() => void) | null = null;
+
 /**
  * TXT 文字选择检测
+ * 每次调用先清理之前的监听器，避免重复绑定
  */
 const setupTxtSelection = () => {
+  // 清理旧监听器
+  txtSelectionCleanup?.();
+
   const bodies = document.querySelectorAll('.txt-page.active .content-body');
   if (!bodies.length) return;
 
@@ -401,7 +415,7 @@ const setupTxtSelection = () => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) return;
       selectionText.value = sel.toString().trim();
-      (window as any)._txtNotePage = txtCurrentPage.value;
+      txtNotePage.value = txtCurrentPage.value;
 
       noteComment.value = '';
       noteColor.value = '#ffe082';
@@ -409,13 +423,22 @@ const setupTxtSelection = () => {
     }, 10);
   };
 
+  const onContextMenu = (e: Event) => { e.preventDefault(); };
+
   bodies.forEach((el) => {
-    el.addEventListener('contextmenu', (e: Event) => {
-      e.preventDefault();
-    });
+    el.addEventListener('contextmenu', onContextMenu);
     el.addEventListener('mouseup', onTxtMouseUp);
     el.addEventListener('touchend', onTxtMouseUp);
   });
+
+  txtSelectionCleanup = () => {
+    bodies.forEach((el) => {
+      el.removeEventListener('contextmenu', onContextMenu);
+      el.removeEventListener('mouseup', onTxtMouseUp);
+      el.removeEventListener('touchend', onTxtMouseUp);
+    });
+    txtSelectionCleanup = null;
+  };
 };
 
 /**
@@ -426,6 +449,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 清理 TXT 选择事件监听器
+  txtSelectionCleanup?.();
   // 停止阅读时长记录
   readingStatsStore.endSession();
   // 清理资源
@@ -674,7 +699,7 @@ const saveNote = () => {
   } else if (book.value.format === 'pdf') {
     note.page = pdfEngine.currentPage.value;
   } else if (book.value.format === 'txt') {
-    note.page = (window as any)._txtNotePage ?? txtCurrentPage.value;
+    note.page = txtNotePage.value ?? txtCurrentPage.value;
   }
 
   libraryStore.addNote(bookId, note);

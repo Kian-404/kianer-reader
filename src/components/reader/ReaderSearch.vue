@@ -44,6 +44,13 @@ import { ref } from 'vue';
 import { Icon } from '@iconify/vue';
 import { ElMessage } from 'element-plus';
 
+interface SearchResult {
+  text: string;
+  excerpt?: string;
+  cfi?: string;
+  page?: number;
+}
+
 const props = defineProps<{
   bookFormat?: string;
   txtContent?: string;
@@ -51,13 +58,20 @@ const props = defineProps<{
 }>();
 
 defineEmits<{
-  (e: 'jump', res: any): void;
+  (e: 'jump', res: SearchResult): void;
 }>();
 
 const searchInput = ref('');
-const results = ref<any[]>([]);
+const results = ref<SearchResult[]>([]);
 const loading = ref(false);
 const searchStatus = ref('');
+const MAX_RESULTS = 100;
+
+/** 转义用户输入中的正则特殊字符，防止 new RegExp 崩溃 */
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const highlightText = (text: string, query: string) =>
+  text.replace(new RegExp(escapeRegex(query), 'gi'), (m: string) => `<mark>${m}</mark>`);
 
 const doSearch = async () => {
   const query = searchInput.value.trim();
@@ -68,14 +82,22 @@ const doSearch = async () => {
   searchStatus.value = '准备中...';
 
   try {
+    const searchResults: SearchResult[] = [];
+    const pushSafe = (item: SearchResult) => {
+      if (searchResults.length >= MAX_RESULTS) return;
+      searchResults.push(item);
+    };
+
     if (props.bookFormat === 'epub' && props.rendition) {
       const epub = (props.rendition as any).book;
-      const searchResults: any[] = [];
       const total = epub.spine.spineItems.length;
-      
-      // Sequential search to prevent memory spikes
       let current = 0;
+      
       for (const item of epub.spine.spineItems) {
+        if (searchResults.length >= MAX_RESULTS) {
+          searchStatus.value = `已达 ${MAX_RESULTS} 条上限`;
+          break;
+        }
         current++;
         searchStatus.value = `第 ${current} / ${total} 章节`;
         try {
@@ -83,12 +105,11 @@ const doSearch = async () => {
           const res = item.find(query);
           
           if (res && res.length > 0) {
-            const formatted = res.map((match: any) => ({
+            const formatted: SearchResult[] = res.map((match: any) => ({
               ...match,
-              excerpt: match.excerpt.replace(new RegExp(query, 'gi'), (m: string) => `<mark>${m}</mark>`)
+              excerpt: highlightText(match.excerpt, query)
             }));
-            searchResults.push(...formatted);
-            results.value = [...searchResults];
+            formatted.forEach(pushSafe);
           }
           
           item.unload();
@@ -96,16 +117,16 @@ const doSearch = async () => {
           console.warn('Failed to search chapter:', item.href, err);
         }
       }
+      results.value = searchResults;
     } else if (props.bookFormat === 'txt' && props.txtContent) {
       searchStatus.value = '正在检索全文...';
       const CHARS_PER_PAGE = 3000;
       const lines = props.txtContent.split('\n');
-      const searchResults = [];
       let charOffset = 0;
-      for (let i = 0; i < lines.length; i++) {
+      for (let i = 0; i < lines.length && searchResults.length < MAX_RESULTS; i++) {
         if (lines[i].toLowerCase().includes(query.toLowerCase())) {
-          searchResults.push({
-            text: lines[i].replace(new RegExp(query, 'gi'), (match: string) => `<mark>${match}</mark>`),
+          pushSafe({
+            text: highlightText(lines[i], query),
             page: Math.floor(charOffset / CHARS_PER_PAGE)
           });
         }
@@ -114,10 +135,9 @@ const doSearch = async () => {
       results.value = searchResults;
     } else if (props.bookFormat === 'pdf' && (window as any).pdfDoc) {
       const pdf = (window as any).pdfDoc;
-      const searchResults = [];
       const total = pdf.numPages;
       
-      for (let i = 1; i <= total; i++) {
+      for (let i = 1; i <= total && searchResults.length < MAX_RESULTS; i++) {
         searchStatus.value = `第 ${i} / ${total} 页`;
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
@@ -125,23 +145,26 @@ const doSearch = async () => {
         const text = strings.join(' ');
         
         if (text.toLowerCase().includes(query.toLowerCase())) {
-          const excerpt = text.replace(new RegExp(query, 'gi'), (match: string) => `<mark>${match}</mark>`);
-          searchResults.push({
-            text: text,
-            excerpt: excerpt,
+          pushSafe({
+            text,
+            excerpt: highlightText(text, query),
             page: i
           });
-          results.value = [...searchResults];
         }
       }
       results.value = searchResults;
     } else {
       ElMessage.warning('当前格式暂不支持搜索');
     }
+
+    if (searchResults.length >= MAX_RESULTS) {
+      ElMessage.info(`已显示前 ${MAX_RESULTS} 条结果，请精确搜索以获取更多`);
+    }
   } catch (e) {
     console.error('Search failed', e);
     ElMessage.error('搜索失败');
   } finally {
+    searchStatus.value = '';
     loading.value = false;
   }
 };

@@ -41,13 +41,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
+import type { Bookmark } from '@/stores/library';
 
 const props = defineProps<{
-  bookmarks?: any[];
+  bookmarks?: Bookmark[];
 }>();
 
 defineEmits<{
-  (e: 'jump', bm: any): void;
+  (e: 'jump', bm: Bookmark): void;
   (e: 'add'): void;
   (e: 'remove', id: string): void;
 }>();
