@@ -200,6 +200,7 @@ import { Icon } from '@iconify/vue';
 import { ElMessage } from 'element-plus';
 import { useLibraryStore, type Book } from '@/stores/library';
 import { useReaderStore } from '@/stores/reader';
+import { useReadingStatsStore } from '@/stores/readingStats';
 import { StatusBar } from '@capacitor/status-bar';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
@@ -227,6 +228,7 @@ const route = useRoute();
 const router = useRouter();
 const libraryStore = useLibraryStore();
 const readerStore = useReaderStore();
+const readingStatsStore = useReadingStatsStore();
 
 const bookId = route.params.id as string;
 
@@ -325,6 +327,9 @@ const initReader = async () => {
   const arrayBuffer = data instanceof Blob ? await data.arrayBuffer() : data;
   await initEngineByFormat(arrayBuffer);
   bindEngineEvents();
+  // 开始记录阅读时长
+  await readingStatsStore.initStore();
+  readingStatsStore.startSession(bookId);
 };
 
 /**
@@ -421,6 +426,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 停止阅读时长记录
+  readingStatsStore.endSession();
   // 清理资源
   epubEngine.rendition.value?.destroy();
   (window as any).pdfDoc = null;

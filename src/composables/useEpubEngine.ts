@@ -30,25 +30,15 @@ export function useEpubEngine(bookId: string) {
   };
 
   /**
-   * 构造不含 font-family 的主题样式对象
-   * font-family 通过直接操作 iframe DOM 设置，避免 epubjs override 的 CSS 堆积问题
-   */
-  const makeThemeStyles = (bg: string, color: string) => ({
-    body: { 'background-color': `${bg} !important`, 'color': `${color} !important` },
-    p:    { 'color': `${color} !important` },
-    span: { 'color': `${color} !important` },
-    div:  { 'color': `${color} !important` },
-  });
-
-  /**
-   * 一次性注册三个主题（仅在初始化时调用）
+   * 选择性注册 epubjs 主题：不做样式注入（改用 kdf-themes 类名作用域 CSS），
    */
   const registerThemes = () => {
     if (!rendition.value) return;
-    rendition.value.themes.register("day",   makeThemeStyles(THEMES.day.bg, THEMES.day.color));
-    rendition.value.themes.register("night", makeThemeStyles(THEMES.night.bg, THEMES.night.color));
-    rendition.value.themes.register("sepia", makeThemeStyles(THEMES.sepia.bg, THEMES.sepia.color));
+    // 仅调用 select() 让 content 元素获得/失去类名（.day/.night/.sepia）
+    // 实际 CSS 由 injectThemeStyles() 通过类名作用域注入，不受 DOM 顺序影响
     rendition.value.themes.select(readerStore.theme);
+    // 注入类名作用域 CSS
+    injectThemeStyles();
   };
 
   /**
@@ -103,16 +93,61 @@ export function useEpubEngine(bookId: string) {
   };
 
   /**
+   * 生成所有主题的类名作用域 CSS 字符串
+   * 用 .day body {} / .night body {} 代替裸 body{}，使 addClass/removeClass 真正控制主题
+   */
+  const buildThemeCSS = () => {
+    const lines: string[] = [];
+    for (const [name, { bg, color }] of Object.entries(THEMES)) {
+      lines.push(`/* ${name} */`);
+      lines.push(`.${name} body { background-color: ${bg} !important; color: ${color} !important; }`);
+      lines.push(`.${name} p { color: ${color} !important; }`);
+      lines.push(`.${name} span { color: ${color} !important; }`);
+      lines.push(`.${name} div { color: ${color} !important; }`);
+    }
+    return lines.join('\n');
+  };
+
+  /**
+   * 向所有 iframe 注入类名作用域的主题 CSS
+   * 每个内容页面只保留一个 <style id="kdf-themes"> 元素，重复调用只替换内容
+   */
+  const injectThemeStyles = () => {
+    if (!rendition.value) return;
+    try {
+      const contents = (rendition.value as any).getContents() as any[];
+      if (!contents || contents.length === 0) return;
+      const css = buildThemeCSS();
+      for (const content of contents) {
+        if (!content?.document?.head) continue;
+        const doc = content.document;
+        let style = doc.getElementById('kdf-themes') as HTMLStyleElement;
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'kdf-themes';
+          doc.head.appendChild(style);
+        }
+        style.textContent = css;
+      }
+    } catch (e) {
+      console.warn('Cannot inject theme styles into EPUB content', e);
+    }
+  };
+
+  /**
    * 更新 EPUB 样式：
    *  - 字体大小：epubjs themes.fontSize()
    *  - 字体族：直接操作 iframe DOM（避免 override 堆积）
-   *  - 主题：仅 select()，永不 re-register 完整主题
+   *  - 主题：用类名作用域 CSS 确保多次切换后仍然生效
    *  - 高亮笔记：从 IndexedDB 恢复
    */
   const updateEpubStyle = () => {
     if (!rendition.value) return;
     rendition.value.themes.fontSize(readerStore.fontSize + 'px');
+    // themes.select() 的作用仅用于给 content 元素添加/移除类名（.day/.night/.sepia）
+    // 实际样式由 kdf-themes 中的类名作用域 CSS 控制
     rendition.value.themes.select(readerStore.theme);
+    injectThemeStyles();
     // 字体族需等 iframe 渲染完成后再注入
     requestAnimationFrame(() => injectFontFamily());
     // 恢复持久化的高亮笔记
@@ -204,6 +239,7 @@ export function useEpubEngine(bookId: string) {
     r.on("rendered", () => {
       r.themes.fontSize(readerStore.fontSize + 'px');
       r.themes.select(readerStore.theme);
+      injectThemeStyles();
       injectFontFamily();
       restoreHighlights();
     });
@@ -280,6 +316,7 @@ export function useEpubEngine(bookId: string) {
     r.on("rendered", () => {
       r.themes.fontSize(readerStore.fontSize + 'px');
       r.themes.select(readerStore.theme);
+      injectThemeStyles();
       injectFontFamily();
       restoreHighlights();
     });
