@@ -74,7 +74,7 @@
                 <Icon icon="solar:info-circle-linear" style="font-size: 20px" />
                 <span>关于 Kianer Reader</span>
               </div>
-              <span class="version-tag">v1.0.0</span>
+              <span class="version-tag">v{{ version }}</span>
             </div>
           </div>
         </div>
@@ -140,6 +140,7 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import pako from 'pako';
 import { Share } from '@capacitor/share';
 import { useRouter } from 'vue-router';
+import { version } from '../../package.json';
 
 const libraryStore = useLibraryStore();
 const router = useRouter();
