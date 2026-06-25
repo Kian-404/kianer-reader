@@ -136,7 +136,8 @@ import { ElMessageBox, ElMessage } from 'element-plus';
 import localforage from 'localforage';
 import { useDark } from '@vueuse/core';
 import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import pako from 'pako';
 import { Share } from '@capacitor/share';
 import { useRouter } from 'vue-router';
 
@@ -229,11 +230,16 @@ const exportData = async () => {
     const fileName = `kianer-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
     if (Capacitor.isNativePlatform()) {
-      // 写入缓存目录，获取可分享的 content:// URI
+      // 压缩 JSON 避免 Android Bridge 大数据限制导致 writeFile 失败
+      const compressed = pako.gzip(jsonStr);
+      const binaryStr = String.fromCharCode(...compressed);
+      const base64Data = btoa(binaryStr);
+
       await Filesystem.writeFile({
         path: fileName,
-        data: jsonStr,
+        data: base64Data,
         directory: Directory.Cache,
+        encoding: Encoding.UTF8, // 将 base64 数据解码为二进制写入
       });
       const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
       // 只传 files，不传 text（部分 Android 版本 text + files 同时传会导致崩溃）
@@ -268,7 +274,18 @@ const handleImport = async (event: Event) => {
   if (!file) return;
 
   try {
-    const text = await file.text();
+    // 支持普通 JSON 和 gzip 压缩两种格式
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let text: string;
+
+    // 检测 gzip 魔数 (0x1f 0x8b)
+    if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+      text = pako.ungzip(bytes, { to: 'string' });
+    } else {
+      text = new TextDecoder().decode(bytes);
+    }
+
     const data = JSON.parse(text);
     if (!data.version || !Array.isArray(data.books)) {
       ElMessage.error('无效的备份文件格式');
@@ -284,7 +301,8 @@ const handleImport = async (event: Event) => {
 
     ElMessage.info('正在恢复数据...');
     const cleanBooks = data.books.map((b: any) => {
-      const { _fileDataBase64, ...meta } = b;
+      const meta = { ...b };
+      delete meta._fileDataBase64;
       return meta;
     });
 

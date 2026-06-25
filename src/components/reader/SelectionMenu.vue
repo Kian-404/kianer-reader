@@ -1,7 +1,7 @@
 <template>
   <div class="selection-overlay" @click.self="$emit('close')">
     <transition name="slide-up">
-      <div class="selection-sheet glass-card">
+      <div v-show="true" class="selection-sheet glass-card">
         <!-- Handle bar -->
         <div class="handle-bar"><div class="handle"></div></div>
 
