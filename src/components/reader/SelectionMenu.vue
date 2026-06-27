@@ -7,8 +7,7 @@
 
         <!-- Selected text preview -->
         <div class="selection-preview" :style="{ borderLeftColor: selectedColor }">
-          <Icon icon="solar:quote-linear" class="quote-icon" />
-          <p class="preview-text">"{{ text }}"</p>
+          <p class="preview-text">{{ text }}</p>
         </div>
 
         <!-- Comment input -->
@@ -94,7 +93,6 @@ const handleColorChange = (color: string) => {
   inset: 0;
   z-index: 3000;
   background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -128,31 +126,24 @@ const handleColorChange = (color: string) => {
 
 .selection-preview {
   display: flex;
-  gap: 10px;
-  padding: 14px 16px;
-  margin-bottom: 16px;
-  background: rgba(0, 0, 0, 0.02);
+  gap: 0;
+  padding: 16px 16px;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.015);
   border-radius: 12px;
-  border-left: 4px solid #ffe082;
-  align-items: flex-start;
-
-  .quote-icon {
-    font-size: 18px;
-    color: #94a3b8;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
+  border-left: 3px solid #ffe082;
 
   .preview-text {
     margin: 0;
-    font-size: 14px;
-    color: #475569;
-    line-height: 1.6;
-    font-style: italic;
+    font-size: 18px;
+    line-height: 1.7;
+    color: #1e293b;
+    font-weight: 500;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
   }
 }
 

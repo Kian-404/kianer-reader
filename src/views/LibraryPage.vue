@@ -132,7 +132,7 @@ import { useLibraryStore, type Book } from '../stores/library';
 import { extractMetadata } from '../utils/parser';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
-import { Capacitor } from '@capacitor/core';
+import { isWifiTransferAvailable } from '@/utils/wifiTransfer';
 
 const libraryStore = useLibraryStore();
 const router = useRouter();
@@ -140,7 +140,7 @@ const searchQuery = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 
 const goWifiTransfer = () => {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isWifiTransferAvailable()) {
     ElMessage.info('Wi-Fi 传书功能仅支持 Android 设备');
     return;
   }

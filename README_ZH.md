@@ -71,7 +71,7 @@
 | **测试** | Vitest + Cypress |
 | **代码检查** | ESLint 10 + @vue/eslint-config-typescript |
 | **样式** | Less |
-| **目标平台** | Web / Android |
+|| **目标平台** | Web / Android / iOS |
 
 ---
 
@@ -129,6 +129,18 @@ bun run android:build
 
 生成的 APK 在 `android/app/build/outputs/apk/debug/`。
 
+### iOS 构建
+
+```bash
+# 1. 构建 Web 资源并同步到 iOS
+bun run ios:sync
+
+# 2. 打开 Xcode
+bun run ios:open
+```
+
+在 Xcode 中选择模拟器或真机运行。iOS 构建需要 macOS + Xcode 16+。
+
 ---
 
 ## 📁 项目结构
@@ -174,6 +186,7 @@ kianer/
 │   ├── unit/                  # Vitest 单元测试
 │   └── e2e/                   # Cypress E2E 测试
 ├── android/                   # Capacitor Android 项目
+├── ios/                       # Capacitor iOS 项目
 ├── package.json
 ├── tsconfig.json
 └── eslint.config.js

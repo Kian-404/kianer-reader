@@ -283,16 +283,30 @@ const handleImport = async (event: Event) => {
   if (!file) return;
 
   try {
-    // 支持普通 JSON 和 gzip 压缩两种格式
+    // 支持三种格式：纯 JSON / base64(gzip) / 二进制 gzip
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     let text: string;
 
-    // 检测 gzip 魔数 (0x1f 0x8b)
+    // 1. 二进制 gzip（魔数 0x1f 0x8b）
     if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
       text = pako.ungzip(bytes, { to: 'string' });
-    } else {
+    }
+    // 2. 纯 JSON（以 '{' 开头）
+    else if (bytes.length > 0 && bytes[0] === 0x7b) {
       text = new TextDecoder().decode(bytes);
+    }
+    // 3. base64 编码的 gzip（Android 导出格式）
+    else {
+      const base64Str = new TextDecoder().decode(bytes);
+      const decoded = atob(base64Str);
+      const decodedBytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+      if (decodedBytes.length >= 2 && decodedBytes[0] === 0x1f && decodedBytes[1] === 0x8b) {
+        text = pako.ungzip(decodedBytes, { to: 'string' });
+      } else {
+        // 最后兜底
+        text = base64Str;
+      }
     }
 
     const data = JSON.parse(text);

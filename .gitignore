@@ -36,6 +36,7 @@ npm-debug.log*
 
 # Capacitor iOS
 /ios/App/build/
+/ios/App/App/public/
 /ios/.build/
 
 # Env
