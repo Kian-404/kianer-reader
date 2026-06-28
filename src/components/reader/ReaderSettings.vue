@@ -1,19 +1,37 @@
 <template>
   <div class="settings-content">
-    <div class="setting-item">
+    <!-- ═══ 背景主题 ═══ -->
+    <div class="setting-item theme-section">
       <span class="label">背景主题</span>
-      <div class="theme-picker">
+      <div class="theme-grid">
         <button
           v-for="t in themes"
           :key="t.name"
-          :class="['theme-opt', t.name, { active: readerStore.theme === t.name }]"
-          :title="t.label"
+          :class="['theme-card', { active: readerStore.theme === t.name }]"
+          :style="{
+            '--card-bg': t.vars['--bg-primary'],
+            '--card-text': t.vars['--text-primary'],
+            '--card-border': t.vars['--border-color'],
+            '--card-accent': t.vars['--accent-color'],
+          }"
           :aria-label="`切换到${t.label}主题`"
-          @click="handleThemeChange(t.name as any)"
-        ></button>
+          @click="handleThemeChange(t.name)"
+        >
+          <!-- 缩略预览 -->
+          <div class="theme-preview">
+            <div class="preview-text-line" style="width: 70%"></div>
+            <div class="preview-text-line" style="width: 50%"></div>
+            <div class="preview-text-line preview-accent"></div>
+          </div>
+          <div class="theme-meta">
+            <span class="theme-label">{{ t.label }}</span>
+            <span class="theme-swatch" :style="{ background: t.swatch }"></span>
+          </div>
+        </button>
       </div>
     </div>
-    
+
+    <!-- ═══ 翻页方式 ═══ -->
     <div class="setting-item">
       <span class="label">翻页方式</span>
       <el-radio-group 
@@ -26,6 +44,7 @@
       </el-radio-group>
     </div>
 
+    <!-- ═══ 字体调整 ═══ -->
     <div class="setting-item">
       <span class="label">{{ isPdf ? 'PDF 缩放' : '字体大小' }}</span>
       <div class="font-size-ctrl">
@@ -53,6 +72,7 @@
       </div>
     </div>
 
+    <!-- ═══ 字体选择 ═══ -->
     <div v-if="!isPdf" class="setting-item font-family-item">
       <span class="label">阅读字体</span>
       <div class="font-family-picker">
@@ -69,6 +89,7 @@
       </div>
     </div>
 
+    <!-- ═══ 屏幕亮度 ═══ -->
     <div class="setting-item">
       <span class="label">屏幕亮度</span>
       <div class="brightness-ctrl">
@@ -90,6 +111,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useReaderStore } from '@/stores/reader';
+import { getThemes, type ThemeName } from '@/theme/readingThemes';
 import { Icon } from '@iconify/vue';
 
 const props = defineProps<{
@@ -100,23 +122,15 @@ const readerStore = useReaderStore();
 
 const isPdf = computed(() => props.bookFormat === 'pdf');
 
-/**
- * 主题配置
- */
-const themes = [
-  { name: 'day', label: '明亮' },
-  { name: 'sepia', label: '护眼' },
-  { name: 'night', label: '深色' }
-];
+/** 主题列表（按 UI 顺序） */
+const themes = getThemes();
 
-/**
- * 字体配置
- */
+/** 字体配置 */
 const fonts = [
   { label: '系统', value: 'system-ui' },
   { label: '衬线', value: 'serif' },
   { label: '无衬线', value: 'sans-serif' },
-  { label: '等宽', value: 'monospace' }
+  { label: '等宽', value: 'monospace' },
 ];
 
 const emit = defineEmits<{
@@ -124,38 +138,19 @@ const emit = defineEmits<{
   (e: 'size-change'): void;
 }>();
 
-/**
- * 处理主题切换
- * 确保每次切换都能正确应用主题
- * @param themeName 主题名称
- */
-const handleThemeChange = (themeName: string) => {
-  // 如果切换到相同主题，先切换到其他主题再切换回来，确保触发重新渲染
-  if (readerStore.theme === themeName) {
-    return;
-  }
-  
-  // 直接设置主题
-  readerStore.setTheme(themeName as any);
-  
-  // 触发主题变更事件（如果需要额外操作）
-  // 可在此添加主题切换的动画或其他效果
+const handleThemeChange = (themeName: ThemeName) => {
+  if (readerStore.theme === themeName) return;
+  readerStore.setTheme(themeName);
 };
 
-/**
- * 改变字体大小
- * @param delta 变化值（-1 或 +1）
- */
 const changeFontSize = (delta: number) => {
   if (isPdf.value) {
-    // PDF 模式：调节缩放
     const newZoom = Math.round((readerStore.pdfScale + delta * 0.1) * 10) / 10;
     if (newZoom >= 0.5 && newZoom <= 3.0) {
       (readerStore as any).pdfScale = newZoom;
       emit('size-change');
     }
   } else {
-    // TXT/EPUB 模式：调节字体大小
     const newSize = readerStore.fontSize + delta;
     if (newSize >= 12 && newSize <= 40) {
       readerStore.fontSize = newSize;
@@ -164,26 +159,13 @@ const changeFontSize = (delta: number) => {
   }
 };
 
-/**
- * 改变字体族
- * @param font 字体值
- */
 const changeFontFamily = (font: string) => {
   readerStore.fontFamily = font;
 };
 
-/**
- * 处理亮度变化
- * 确保亮度不低于 30%
- * @param value 亮度值
- */
 const handleBrightnessChange = (value: number) => {
-  // 限制最小亮度为 30%
-  if (value < 30) {
-    readerStore.brightness = 30;
-  } else if (value > 100) {
-    readerStore.brightness = 100;
-  }
+  if (value < 30) readerStore.brightness = 30;
+  else if (value > 100) readerStore.brightness = 100;
 };
 </script>
 
@@ -200,7 +182,7 @@ const handleBrightnessChange = (value: number) => {
   justify-content: space-between;
   align-items: center;
   min-height: 40px;
-  
+
   .label {
     font-size: 14px;
     color: #64748b;
@@ -209,49 +191,93 @@ const handleBrightnessChange = (value: number) => {
   }
 }
 
-.theme-picker {
+/* ═══ 主题网格 ═══ */
+.theme-section {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 0;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.theme-card {
   display: flex;
-  gap: 12px;
-  
-  .theme-opt {
-    width: 30px;
-    height: 30px;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+  padding: 0;
+  background: transparent;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  &.active {
+    border-color: #409eff;
+    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.15);
+  }
+
+  /* 缩略预览区域 */
+  .theme-preview {
+    background: var(--card-bg);
+    padding: 12px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .preview-text-line {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--card-text);
+    opacity: 0.35;
+
+    &.preview-accent {
+      width: 30%;
+      background: var(--card-accent);
+      opacity: 0.6;
+    }
+  }
+
+  /* 底部标签栏 */
+  .theme-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: color-mix(in srgb, var(--card-bg) 85%, #000 15%);
+  }
+
+  .theme-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--card-text);
+    opacity: 0.75;
+  }
+
+  .theme-swatch {
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    padding: 0;
-    background: transparent;
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-
-    &.active {
-      border-color: #409eff;
-      transform: scale(1.1);
-    }
-
-    &.day {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-
-      &.active {
-        border-color: #409eff;
-      }
-    }
-
-    &.sepia {
-      background: #f4ecd8;
-    }
-
-    &.night {
-      background: #1a1a1a;
-    }
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    flex-shrink: 0;
   }
 }
 
+/* ═══ 字体调整 ═══ */
 .font-size-ctrl {
   display: flex;
   align-items: center;
@@ -360,22 +386,17 @@ const handleBrightnessChange = (value: number) => {
     }
   }
 }
+
+/* ═══ 深色模式适配 ═══ */
 html.ion-palette-dark {
   .settings-content {
     .label {
       color: #cbd5e1;
     }
-  }
 
-  .theme-picker {
-    .theme-opt {
-      &.day {
-        background: #f1f5f9;
-      }
-
-      &.night {
-        background: #0f0f0f;
-      }
+    .theme-card.active {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
     }
   }
 
@@ -419,12 +440,6 @@ html.ion-palette-dark {
       .el-slider__button {
         border-color: #fbbf24;
       }
-    }
-  }
-
-  .zoom-ctrl {
-    .zoom-val {
-      color: #cbd5e1;
     }
   }
 }

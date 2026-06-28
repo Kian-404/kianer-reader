@@ -83,23 +83,27 @@ watch(() => props.progress, (newVal) => {
 
   .top-bar, .bottom-bar {
     pointer-events: auto;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+    background: color-mix(in srgb, var(--bg-secondary, #f8fafc) 72%, transparent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 4px 30px var(--shadow-color, rgba(0, 0, 0, 0.08));
+    /* 与阅读区域形成层级区分 */
+    border-color: color-mix(in srgb, var(--border-color, #e2e8f0) 60%, transparent);
   }
 
   .top-bar {
     position: absolute; top: 0; left: 0; right: 0;
     padding: 15px 20px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 15px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color, #e2e8f0) 50%, transparent);
+
     .book-title {
       font-weight: 700;
       font-size: 16px;
-      color: #1e293b;
+      color: var(--text-primary, #1e293b);
       flex: 1;
       text-align: center;
       margin: 0 20px;
@@ -111,11 +115,12 @@ watch(() => props.progress, (newVal) => {
 
   .bottom-bar {
     position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 15px 25px 20px 25px; // Reduced padding
+    padding: 15px 25px 20px 25px;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
     display: flex;
     flex-direction: column;
-    gap: 15px; // Reduced gap
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    gap: 15px;
+    border-top: 1px solid color-mix(in srgb, var(--border-color, #e2e8f0) 50%, transparent);
     border-radius: 24px 24px 0 0;
 
     .progress-section {
@@ -126,7 +131,7 @@ watch(() => props.progress, (newVal) => {
 
       .progress-text {
         font-size: 12px;
-        color: #64748b;
+        color: var(--text-secondary, #64748b);
         font-weight: 600;
         min-width: 60px;
       }
@@ -149,14 +154,14 @@ watch(() => props.progress, (newVal) => {
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        color: #475569;
+        color: var(--text-secondary, #475569);
         cursor: pointer;
         transition: all 0.2s;
 
         &:active {
           transform: scale(0.9);
-          background: rgba(64, 158, 255, 0.1);
-          color: #409eff;
+          background: color-mix(in srgb, var(--accent-color, #409eff) 15%, transparent);
+          color: var(--accent-color, #409eff);
         }
 
         .el-icon {
@@ -168,17 +173,17 @@ watch(() => props.progress, (newVal) => {
 }
 
 .glass-btn {
-  background: rgba(255, 255, 255, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.5) !important;
-  color: #475569 !important;
+  background: color-mix(in srgb, var(--bg-secondary, #f8fafc) 55%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--border-color, #e2e8f0) 40%, transparent) !important;
+  color: var(--text-secondary, #475569) !important;
   width: 44px !important;
   height: 44px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   &:hover {
-    background: rgba(255, 255, 255, 0.8) !important;
-    color: #409eff !important;
+    background: color-mix(in srgb, var(--bg-secondary, #f8fafc) 80%, transparent) !important;
+    color: var(--accent-color, #409eff) !important;
   }
 }
 

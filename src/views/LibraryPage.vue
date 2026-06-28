@@ -65,7 +65,13 @@
             class="book-card"
           >
             <div class="cover-wrapper" @click="openBook(book)">
-              <img v-if="book.cover" :src="book.cover" :alt="book.title" />
+              <img
+                v-if="book.cover && !brokenCovers.has(book.id)"
+                :src="book.cover"
+                :alt="book.title"
+                @error="onCoverError(book.id)"
+                @load="onCoverLoad"
+              />
               <div v-else class="default-cover" :class="book.format">
                 <Icon 
                   :icon="book.format === 'pdf' ? 'solar:file-pdf-linear' : (book.format === 'epub' ? 'solar:notebook-linear' : 'solar:document-text-linear')" 
@@ -138,6 +144,15 @@ const libraryStore = useLibraryStore();
 const router = useRouter();
 const searchQuery = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
+
+/** 记录加载失败的封面 ID，回退到格式色块 */
+const brokenCovers = ref(new Set<string>());
+const onCoverError = (id: string) => {
+  brokenCovers.value = new Set([...brokenCovers.value, id]);
+};
+const onCoverLoad = (e: Event) => {
+  (e.target as HTMLElement).classList.add('loaded');
+};
 
 const goWifiTransfer = () => {
   if (!isWifiTransferAvailable()) {
@@ -520,6 +535,12 @@ const confirmDelete = (book: Book) => {
       height: 100%;
       object-fit: cover;
       display: block;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+
+      &.loaded {
+        opacity: 1;
+      }
     }
 
     .default-cover {

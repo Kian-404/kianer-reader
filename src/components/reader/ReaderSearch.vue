@@ -120,7 +120,8 @@ const doSearch = async () => {
       results.value = searchResults;
     } else if (props.bookFormat === 'txt' && props.txtContent) {
       searchStatus.value = '正在检索全文...';
-      const CHARS_PER_PAGE = 3000;
+      // 必须与 useTxtEngine.ts 中的 CHARS_PER_PAGE 保持一致
+      const CHARS_PER_PAGE = 1200;
       const lines = props.txtContent.split('\n');
       let charOffset = 0;
       for (let i = 0; i < lines.length && searchResults.length < MAX_RESULTS; i++) {

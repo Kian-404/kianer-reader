@@ -4,6 +4,7 @@
       class="reader-page" 
       :class="['theme-' + readerStore.theme]"
       :style="{ 
+        ...readerStore.themeVars,
         '--font-size': readerStore.fontSize + 'px', 
         '--line-height': readerStore.lineHeight,
         'font-family': readerStore.fontFamily 
@@ -20,16 +21,32 @@
         class="render-container" 
         :class="{ 
           'is-epub': book?.format === 'epub',
-          'mode-horizontal': readerStore.paginationMode === 'horizontal',
-          'mode-vertical': readerStore.paginationMode === 'vertical'
+          'mode-horizontal': readerStore.paginationMode === 'horizontal' && book?.format !== 'txt',
+          'mode-vertical': readerStore.paginationMode === 'vertical' && book?.format !== 'txt',
+          'txt-horizontal': book?.format === 'txt' && readerStore.paginationMode === 'horizontal',
+          'txt-vertical': book?.format === 'txt' && readerStore.paginationMode === 'vertical'
         }" 
         @click="handleContainerClick"
         @scroll="handleScroll"
       >
         <!-- TXT Engine -->
-        <div v-if="book?.format === 'txt'" class="txt-render" :class="'mode-' + readerStore.paginationMode" @contextmenu.prevent>
-          <div 
-            v-for="page in txtVisiblePages" 
+        <!-- 水平模式：单页渲染 + Transition 翻页动画 -->
+        <template v-if="book?.format === 'txt' && readerStore.paginationMode === 'horizontal'">
+          <transition :name="txtPageAnimName" mode="out-in">
+            <div :key="txtCurrentPage" class="txt-page-single" @contextmenu.prevent>
+              <div class="content-body">{{ txtCurrentPageText }}</div>
+            </div>
+          </transition>
+        </template>
+
+        <!-- 垂直模式：缓冲页 + 滚动加载 -->
+        <div
+          v-else-if="book?.format === 'txt'"
+          class="txt-render mode-vertical"
+          @contextmenu.prevent
+        >
+          <div
+            v-for="page in txtVisiblePages"
             :key="page.globalIndex"
             class="txt-page"
             :class="{ active: page.globalIndex === txtCurrentPage }"
@@ -255,10 +272,18 @@ const epubEngine = useEpubEngine(bookId);
 const pdfEngine = usePdfEngine(bookId);
 const txtEngine = useTxtEngine(bookId);
 
-// 阅读器 night 主题同步 App 深色模式，使抽屉（目录/搜索/笔记等）背景也变暗
+// 同步主题到全局：CSS 变量 + ion-palette-dark 类
+// 使 Teleport 出去的抽屉（设置、搜索、目录等）也能感知主题
 watch(() => readerStore.theme, (theme) => {
-  document.documentElement.classList.toggle('ion-palette-dark', theme === 'night');
-}, { immediate: true });
+  const root = document.documentElement;
+  // 设置全局 CSS 变量
+  const vars = readerStore.themeVars;
+  Object.entries(vars).forEach(([key, val]) => {
+    root.style.setProperty(key, val);
+  });
+  // 深色主题同步 Ionic 深色模式
+  root.classList.toggle('ion-palette-dark', theme === 'night' || theme === 'ink');
+}, { immediate: true, deep: true });
 
 /**
  * 获取当前活跃的引擎
@@ -285,6 +310,15 @@ const pdfCurrentPage = computed(() => pdfEngine.currentPage.value);
 const txtVisiblePages = computed(() => txtEngine.visiblePages?.value ?? []);
 const txtCurrentPage = computed(() => txtEngine.currentPage?.value ?? 0);
 const txtTotalPages = computed(() => txtEngine.totalPages?.value ?? 0);
+const txtCurrentPageText = computed(() => txtEngine.currentPageText?.value ?? '');
+
+/** 翻页动画 CSS transition name */
+const txtPageAnimName = computed(() => {
+  const dir = txtEngine.pageAnimDir?.value;
+  if (dir === 'forward') return 'page-forward';
+  if (dir === 'backward') return 'page-backward';
+  return 'page-none';
+});
 
 /** 当前章节标识（用于 TOC 高亮） */
 const activeTocHref = computed(() => {
@@ -450,6 +484,13 @@ onUnmounted(() => {
   epubEngine.rendition.value?.destroy();
   (window as any).pdfDoc = null;
 
+  // 清理全局 CSS 变量
+  const root = document.documentElement;
+  ['--bg-primary', '--bg-secondary', '--text-primary', '--text-secondary',
+   '--border-color', '--accent-color', '--shadow-color'].forEach((key) => {
+    root.style.removeProperty(key);
+  });
+
   // 恢复状态栏
   try {
     StatusBar.show();
@@ -524,9 +565,11 @@ const handleGlobalClick = (clientX: number) => {
 };
 
 const handleScroll = () => {
-  // Only PDF engine has handleScroll (TXT is page-based, EPUB is managed by epubjs)
   if (book.value?.format === 'pdf') {
     pdfEngine.handleScroll?.();
+  } else if (book.value?.format === 'txt' && readerStore.paginationMode === 'vertical') {
+    const container = document.querySelector('.render-container');
+    if (container) txtEngine.handleScroll(container as HTMLElement);
   }
 };
 
@@ -629,12 +672,8 @@ const addCurrentBookmark = () => {
     bookmark.page = pdfEngine.currentPage.value;
   } else if (book.value.format === 'txt') {
     const container = document.querySelector('.render-container');
-    const readerStore = useReaderStore();
-    if (readerStore.paginationMode === 'horizontal') {
-      bookmark.scrollLeft = container?.scrollLeft ?? 0;
-    } else {
-      bookmark.scrollTop = container?.scrollTop ?? 0;
-    }
+    // 两种模式都用 scrollTop（水平渲染单页纵向滚动）
+    bookmark.scrollTop = container?.scrollTop ?? 0;
   }
 
   libraryStore.addBookmark(bookId, bookmark);
@@ -727,19 +766,14 @@ const removeNote = (id: string) => {
   position: relative;
   overflow: hidden;
 
-  &.theme-day {
-    background: #fff;
-    color: #333;
-  }
-
-  &.theme-night {
-    background: #1a1a1a;
-    color: #fff;
-  }
-
-  &.theme-sepia {
-    background: #f4ecd8;
-    color: #5b4636;
+  &.theme-day,
+  &.theme-parchment,
+  &.theme-green,
+  &.theme-gray,
+  &.theme-night,
+  &.theme-ink {
+    background: var(--bg-primary);
+    color: var(--text-primary);
   }
 }
 
@@ -769,37 +803,43 @@ const removeNote = (id: string) => {
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
     padding: 0;
+  }
 
-    .txt-page {
-      flex: 0 0 100vw;
-      width: 100vw;
-      height: 100vh;
-      scroll-snap-align: center;
-      overflow-y: auto;
+  &.txt-horizontal {
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0;
+
+    .txt-page-single {
+      width: 100%;
+      min-height: 100vh;
       padding: 40px 24px;
       box-sizing: border-box;
-    }
 
-    .content-body {
-      max-width: 700px;
-      margin: 0 auto;
-      word-wrap: break-word;
-      font-size: var(--font-size);
-      line-height: var(--line-height);
-      white-space: pre-wrap;
+      .content-body {
+        max-width: 700px;
+        margin: 0 auto;
+        word-wrap: break-word;
+        font-size: var(--font-size);
+        line-height: var(--line-height);
+        white-space: pre-wrap;
+      }
     }
   }
 
-  &.mode-vertical .txt-page {
-    min-height: 100vh;
-    padding: 24px 20px;
+  &.mode-vertical,
+  &.txt-vertical {
+    .txt-page {
+      min-height: 100vh;
+      padding: 24px 20px;
 
-    .content-body {
-      font-size: var(--font-size);
-      line-height: var(--line-height);
-      white-space: pre-wrap;
-      max-width: 700px;
-      margin: 0 auto;
+      .content-body {
+        font-size: var(--font-size);
+        line-height: var(--line-height);
+        white-space: pre-wrap;
+        max-width: 700px;
+        margin: 0 auto;
+      }
     }
   }
 
@@ -849,7 +889,7 @@ const removeNote = (id: string) => {
     min-height: 500px;
     display: flex;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--bg-secondary);
     border-radius: 4px;
     position: relative;
     transition: all 0.3s;
@@ -861,15 +901,15 @@ const removeNote = (id: string) => {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 14px;
   }
 
   .pdf-canvas {
     max-width: 100%;
     height: auto !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    background: white;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    background: var(--bg-primary);
   }
 }
 
@@ -915,7 +955,7 @@ const removeNote = (id: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--bg-primary) 60%, transparent);
   backdrop-filter: blur(8px);
 
   .loading-card {
@@ -945,13 +985,33 @@ const removeNote = (id: string) => {
 
 html.ion-palette-dark {
   .reader-loading-overlay {
-    background: rgba(0, 0, 0, 0.4);
+    background: color-mix(in srgb, var(--bg-primary) 60%, transparent);
   }
 }
 </style>
 
 <!-- 非 scoped：穿透 Teleport 覆盖 Element Plus 内联样式 -->
 <style>
+/* ── 所有抽屉玻璃质感 ── */
+.glass-drawer.el-drawer {
+  background: color-mix(in srgb, var(--bg-primary, #fff) 95%, transparent) !important;
+}
+.glass-drawer .el-drawer__header {
+  color: var(--text-primary, #1e293b) !important;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  margin-bottom: 0;
+  padding: 16px 20px;
+}
+.glass-drawer .el-drawer__close-btn,
+.glass-drawer .el-drawer__header button {
+  color: var(--text-secondary, #64748b) !important;
+}
+.glass-drawer .el-drawer__close-btn:hover,
+.glass-drawer .el-drawer__header button:hover {
+  color: var(--text-primary, #1e293b) !important;
+}
+
+/* ── 设置抽屉（底部弹出） ── */
 .settings-drawer .el-drawer__wrapper {
   display: flex;
   align-items: flex-end;
@@ -965,15 +1025,42 @@ html.ion-palette-dark {
   overflow-y: visible;
   padding-bottom: env(safe-area-inset-bottom);
 }
-html.ion-palette-dark .settings-drawer .el-drawer__close-btn,
-html.ion-palette-dark .settings-drawer .el-drawer__header button {
-  color: #94a3b8 !important;
+
+/* ── TXT 翻页动画 ── */
+.page-forward-enter-active,
+.page-forward-leave-active,
+.page-backward-enter-active,
+.page-backward-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-html.ion-palette-dark .settings-drawer .el-drawer__close-btn:hover,
-html.ion-palette-dark .settings-drawer .el-drawer__header button:hover {
-  color: #e2e8f0 !important;
+.page-forward-enter-active,
+.page-backward-enter-active {
+  transition-delay: 0.15s;
 }
-html.ion-palette-dark .settings-drawer .el-drawer__header {
-  color: #e2e8f0 !important;
+
+/* 向前翻页：旧内容左滑出，新内容右滑入 */
+.page-forward-leave-to {
+  transform: translateX(-30%);
+  opacity: 0;
+}
+.page-forward-enter-from {
+  transform: translateX(30%);
+  opacity: 0;
+}
+
+/* 向后翻页：旧内容右滑出，新内容左滑入 */
+.page-backward-leave-to {
+  transform: translateX(30%);
+  opacity: 0;
+}
+.page-backward-enter-from {
+  transform: translateX(-30%);
+  opacity: 0;
+}
+
+/* 无动画（初始加载） */
+.page-none-enter-active,
+.page-none-leave-active {
+  transition: none;
 }
 </style>
