@@ -11,7 +11,7 @@ import { useDark } from '@vueuse/core';
 useDark({
   selector: 'html',
   attribute: 'class',
-  valueDark: 'ion-palette-dark dark',
+  valueDark: 'ion-palette-dark',
   valueLight: '',
 });
 </script>

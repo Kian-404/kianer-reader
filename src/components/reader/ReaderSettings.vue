@@ -147,7 +147,7 @@ const changeFontSize = (delta: number) => {
   if (isPdf.value) {
     const newZoom = Math.round((readerStore.pdfScale + delta * 0.1) * 10) / 10;
     if (newZoom >= 0.5 && newZoom <= 3.0) {
-      (readerStore as any).pdfScale = newZoom;
+      readerStore.setPdfScale(newZoom);
       emit('size-change');
     }
   } else {

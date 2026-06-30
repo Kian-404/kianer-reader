@@ -1,66 +1,62 @@
 <template>
-  <div class="selection-overlay" @click.self="$emit('close')">
-    <transition name="slide-up">
-      <div v-show="true" class="selection-sheet glass-card">
-        <!-- Handle bar -->
-        <div class="handle-bar"><div class="handle"></div></div>
+  <transition name="float-up" @after-leave="afterLeave">
+    <div v-if="visible" class="selection-overlay" @click.self="handleClose">
+      <div class="selection-card">
+        <!-- Accent bar at top -->
+        <div class="accent-bar" :style="{ background: selectedColor }"></div>
 
-        <!-- Selected text preview -->
-        <div class="selection-preview" :style="{ borderLeftColor: selectedColor }">
-          <p class="preview-text">{{ text }}</p>
+        <!-- Selected text preview - quote style -->
+        <div class="quote-block">
+          <div class="quote-mark">&ldquo;</div>
+          <p class="quote-text">{{ displayText }}</p>
+          <div class="quote-mark end">&rdquo;</div>
         </div>
 
         <!-- Comment input -->
-        <div class="input-row">
-          <Icon icon="solar:chat-square-linear" class="input-icon" />
-          <el-input
-            :model-value="comment"
-            placeholder="写点感想..."
+        <div class="comment-section">
+          <textarea
+            :value="comment"
+            placeholder="写下你的想法..."
             :rows="2"
-            type="textarea"
-            class="note-input"
-            resize="none"
-            @update:model-value="$emit('update:comment', $event)"
+            class="comment-input"
+            @input="onCommentInput"
           />
         </div>
 
         <!-- Color picker -->
-        <div class="color-section">
-          <span class="section-label">高亮颜色</span>
-          <div class="color-options">
-            <button
-              v-for="c in colors"
-              :key="c.value"
-              :class="['color-chip', { active: selectedColor === c.value }]"
-              :style="{ backgroundColor: c.value }"
-              :title="c.label"
-              @click="handleColorChange(c.value)"
-            >
-              <Icon v-if="selectedColor === c.value" icon="solar:check-linear" class="check-icon" />
-            </button>
-          </div>
+        <div class="color-strip">
+          <button
+            v-for="c in colors"
+            :key="c.value"
+            :class="['color-dot', { active: selectedColor === c.value }]"
+            :style="{
+              '--dot-color': c.value,
+              transform: selectedColor === c.value ? 'scale(1.3)' : 'scale(1)'
+            }"
+            :title="c.label"
+            @click="handleColorChange(c.value)"
+          >
+            <span v-if="selectedColor === c.value" class="dot-inner"></span>
+          </button>
         </div>
 
-        <!-- Actions -->
-        <div class="action-row">
-          <button class="action-btn secondary" @click="$emit('close')">
-            <Icon icon="solar:close-circle-linear" />
-            <span>取消</span>
-          </button>
-          <button class="action-btn primary" @click="$emit('save')">
-            <Icon icon="solar:pen-linear" />
-            <span>保存笔记</span>
-          </button>
-        </div>
+        <!-- Save button -->
+        <button class="save-btn" @click="handleSave">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          <span>保存</span>
+        </button>
       </div>
-    </transition>
-  </div>
+    </div>
+  </transition>
 </template>
 
 <script setup lang="ts">
-import { Icon } from '@iconify/vue';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
+  visible: boolean;
   text: string;
   comment: string;
   selectedColor?: string;
@@ -72,6 +68,10 @@ const emit = defineEmits<{
   'update:comment': [value: string];
   'update:selectedColor': [value: string];
 }>();
+
+const displayText = computed(() => {
+  return props.text?.trim() || '选中了一段文字';
+});
 
 const colors = [
   { value: '#ffe082', label: '淡黄' },
@@ -85,6 +85,22 @@ const colors = [
 const handleColorChange = (color: string) => {
   emit('update:selectedColor', color);
 };
+
+const onCommentInput = (e: Event) => {
+  emit('update:comment', (e.target as HTMLTextAreaElement).value);
+};
+
+const handleSave = () => {
+  emit('save');
+};
+
+const handleClose = () => {
+  emit('close');
+};
+
+const afterLeave = () => {
+  // 动画结束时清理（可选）
+};
 </script>
 
 <style scoped lang="less">
@@ -92,50 +108,68 @@ const handleColorChange = (color: string) => {
   position: fixed;
   inset: 0;
   z-index: 3000;
-  background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  pointer-events: auto;
 }
 
-.selection-sheet {
+// ── Card ──
+
+.selection-card {
+  position: relative;
   width: 100%;
-  max-width: 500px;
+  max-width: 480px;
   max-height: 70vh;
-  border-radius: 24px 24px 0 0 !important;
-  padding: 12px 24px 28px;
-  background: rgba(255, 255, 255, 0.97) !important;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 28px 28px 0 0;
+  padding: 0 24px 32px;
   overflow-y: auto;
   overscroll-behavior: contain;
-
-  .handle-bar {
-    display: flex;
-    justify-content: center;
-    padding: 4px 0 16px;
-
-    .handle {
-      width: 36px;
-      height: 4px;
-      border-radius: 2px;
-      background: #d1d5db;
-    }
-  }
+  box-shadow:
+    0 -8px 40px rgba(0, 0, 0, 0.08),
+    0 -2px 12px rgba(0, 0, 0, 0.04);
 }
 
-// ── Selection Preview ──
+// ── Accent bar ──
 
-.selection-preview {
+.accent-bar {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  margin: 12px auto 0;
+  opacity: 0.6;
+  transition: background 0.3s;
+}
+
+// ── Quote block ──
+
+.quote-block {
   display: flex;
-  gap: 0;
-  padding: 16px 16px;
-  margin-bottom: 12px;
-  background: rgba(0, 0, 0, 0.015);
-  border-radius: 12px;
-  border-left: 3px solid #ffe082;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px 4px 16px;
 
-  .preview-text {
+  .quote-mark {
+    font-size: 28px;
+    line-height: 1;
+    color: #cbd5e1;
+    font-family: Georgia, 'Times New Roman', serif;
+    user-select: none;
+    flex-shrink: 0;
+
+    &.end {
+      align-self: flex-end;
+      margin-top: auto;
+    }
+  }
+
+  .quote-text {
+    flex: 1;
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.7;
     color: #1e293b;
     font-weight: 500;
@@ -144,198 +178,174 @@ const handleColorChange = (color: string) => {
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
+    letter-spacing: 0.01em;
   }
 }
 
-// ── Input ──
+// ── Comment input ──
 
-.input-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  margin-bottom: 16px;
+.comment-section {
+  margin-bottom: 18px;
+}
 
-  .input-icon {
-    font-size: 18px;
+.comment-input {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
+  background: rgba(0, 0, 0, 0.03);
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  transition: background 0.2s;
+  box-sizing: border-box;
+
+  &:focus {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  &::placeholder {
     color: #94a3b8;
-    margin-top: 10px;
-    flex-shrink: 0;
-  }
-
-  .note-input {
-    flex: 1;
-
-    :deep(.el-textarea__inner) {
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #334155;
-      background: rgba(255, 255, 255, 0.5);
-      box-shadow: none;
-      transition: border-color 0.2s;
-
-      &:focus {
-        border-color: #409eff;
-      }
-
-      &::placeholder {
-        color: #94a3b8;
-      }
-    }
   }
 }
 
-// ── Color Picker ──
+// ── Color strip ──
 
-.color-section {
-  margin-bottom: 20px;
-
-  .section-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    margin-bottom: 10px;
-  }
-
-  .color-options {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .color-chip {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    border: 2px solid transparent;
-    cursor: pointer;
-    padding: 0;
-    outline: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-
-    &:hover {
-      transform: scale(1.1);
-    }
-
-    &.active {
-      border-color: #1e293b;
-      box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.12);
-      transform: scale(1.1);
-    }
-
-    .check-icon {
-      font-size: 16px;
-      color: #1e293b;
-      filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.5));
-    }
-  }
-}
-
-// ── Actions ──
-
-.action-row {
+.color-strip {
   display: flex;
-  gap: 10px;
+  gap: 14px;
+  justify-content: center;
+  padding: 4px 0 20px;
+}
 
-  .action-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px;
-    border-radius: 14px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
+.color-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  background: var(--dot-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s;
+  position: relative;
 
-    &.primary {
-      background: linear-gradient(135deg, #409eff, #60a5fa);
-      color: #fff;
-      box-shadow: 0 4px 12px rgba(64, 158, 255, 0.25);
+  &:hover {
+    transform: scale(1.2);
+  }
 
-      &:active {
-        transform: scale(0.97);
-        box-shadow: 0 2px 6px rgba(64, 158, 255, 0.2);
-      }
-    }
+  &.active {
+    border-color: #1e293b;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot-color) 30%, transparent);
+  }
 
-    &.secondary {
-      background: rgba(0, 0, 0, 0.04);
-      color: #64748b;
-
-      &:active {
-        background: rgba(0, 0, 0, 0.08);
-      }
-    }
+  .dot-inner {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.15);
+    pointer-events: none;
   }
 }
 
-// ── Slide-up Animation ──
+// ── Save button ──
 
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+.save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 16px rgba(30, 41, 59, 0.2);
+  letter-spacing: 0.02em;
+
+  &:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 8px rgba(30, 41, 59, 0.15);
+  }
+
+  svg {
+    transition: transform 0.2s;
+  }
+
+  &:hover svg {
+    transform: scale(1.15);
+  }
 }
 
-.slide-up-enter-from,
-.slide-up-leave-to {
+// ── Float-up Animation ──
+// 入场：从底部弹出（弹簧动效）
+// 离场：向底部滑出
+
+.float-up-enter-active {
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.25s ease;
+}
+
+.float-up-leave-active {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
+}
+
+.float-up-enter-from {
   transform: translateY(100%);
+  opacity: 0;
+}
+
+.float-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 
 // ── Dark Mode ──
 
 html.ion-palette-dark {
-  .selection-overlay {
-    background: rgba(0, 0, 0, 0.5);
+  .selection-card {
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+      0 -8px 40px rgba(0, 0, 0, 0.3),
+      0 -2px 12px rgba(0, 0, 0, 0.15);
   }
 
-  .selection-sheet {
-    background: rgba(30, 41, 59, 0.97) !important;
-
-    .handle {
-      background: #475569;
-    }
+  .quote-mark {
+    color: #475569;
   }
 
-  .selection-preview {
-    background: rgba(255, 255, 255, 0.03);
-
-    .preview-text {
-      color: #94a3b8;
-    }
-  }
-
-  .input-row .note-input :deep(.el-textarea__inner) {
-    border-color: #334155;
-    background: rgba(0, 0, 0, 0.2);
+  .quote-text {
     color: #e2e8f0;
+  }
+
+  .comment-input {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.05);
 
     &:focus {
-      border-color: #60a5fa;
+      background: rgba(255, 255, 255, 0.08);
     }
   }
 
-  .color-chip.active {
+  .color-dot.active {
     border-color: #e2e8f0;
-    box-shadow: 0 0 0 3px rgba(226, 232, 240, 0.15);
   }
 
-  .action-btn.secondary {
-    background: rgba(255, 255, 255, 0.05);
-    color: #94a3b8;
-
-    &:active {
-      background: rgba(255, 255, 255, 0.1);
-    }
+  .save-btn {
+    background: linear-gradient(135deg, #475569, #64748b);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 }
 </style>

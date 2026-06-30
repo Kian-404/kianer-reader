@@ -5,7 +5,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { useLibraryStore, type Book } from '@/stores/library';
-import { extractMetadata } from '@/utils/parser';
+import { extractMetadata, detectFormatByName } from '@/utils/parser';
 
 interface WifiTransferPlugin {
   startServer(options: { port: number }): Promise<{ ip: string; port: number; running: boolean }>;
@@ -100,7 +100,7 @@ export const importUploadedFile = async (filePath: string): Promise<{ success: b
     const meta = await extractMetadata(file, format);
 
     const book: Book = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: crypto.randomUUID(),
       title: meta.title,
       author: meta.author,
       cover: meta.cover,
@@ -125,15 +125,4 @@ export const importUploadedFile = async (filePath: string): Promise<{ success: b
     const msg = e instanceof Error ? e.message : String(e);
     return { success: false, error: msg };
   }
-};
-
-/**
- * 根据文件名检测格式
- */
-const detectFormatByName = (name: string): 'txt' | 'epub' | 'pdf' | null => {
-  const lower = name.toLowerCase().trim();
-  if (lower.endsWith('.txt')) return 'txt';
-  if (lower.endsWith('.epub')) return 'epub';
-  if (lower.endsWith('.pdf')) return 'pdf';
-  return null;
 };

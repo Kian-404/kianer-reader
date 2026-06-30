@@ -4,17 +4,17 @@
       <ion-router-outlet></ion-router-outlet>
       <ion-tab-bar slot="bottom">
         <ion-tab-button tab="home" href="/tabs/home">
-          <ion-icon aria-hidden="true" :icon="libraryOutline" />
+          <Icon icon="solar:library-linear" width="24" height="24" />
           <ion-label>书架</ion-label>
         </ion-tab-button>
 
         <ion-tab-button tab="insights" href="/tabs/insights">
-          <ion-icon aria-hidden="true" :icon="statsChartOutline" />
+          <Icon icon="solar:chart-square-linear" width="24" height="24" />
           <ion-label>洞察</ion-label>
         </ion-tab-button>
 
         <ion-tab-button tab="profile" href="/tabs/profile">
-          <ion-icon aria-hidden="true" :icon="personOutline" />
+          <Icon icon="solar:user-linear" width="24" height="24" />
           <ion-label>我的</ion-label>
         </ion-tab-button>
       </ion-tab-bar>
@@ -23,6 +23,6 @@
 </template>
 
 <script setup lang="ts">
-import { IonTabBar, IonTabButton, IonTabs, IonLabel, IonIcon, IonPage, IonRouterOutlet } from '@ionic/vue';
-import { libraryOutline, statsChartOutline, personOutline } from 'ionicons/icons';
+import { IonTabBar, IonTabButton, IonTabs, IonLabel, IonPage, IonRouterOutlet } from '@ionic/vue';
+import { Icon } from '@iconify/vue';
 </script>

@@ -1,19 +1,23 @@
 <template>
   <ion-page>
-    <ion-header :translucent="true" class="ion-no-border">
+    <ion-header class="ion-no-border">
       <ion-toolbar class="profile-toolbar">
-        <ion-title>个人中心</ion-title>
+        <ion-title class="ion-text-center">个人中心</ion-title>
       </ion-toolbar>
     </ion-header>
 
     <ion-content :fullscreen="true" class="profile-content">
-      <div class="glass-background"></div>
-      
+      <!-- Background orbs -->
+      <BgOrbs color1="#a78bfa" color2="#60a5fa" color3="#34d399" />
+
       <div class="profile-container">
-        <!-- App Header -->
-        <div class="app-header glass-card">
-          <div class="app-icon">
-            <Icon icon="solar:book-linear" />
+        <!-- App Hero -->
+        <div class="app-hero">
+          <div class="app-icon-wrap">
+            <div class="app-icon-bg">
+              <Icon icon="solar:book-linear" />
+            </div>
+            <div class="app-icon-ring"></div>
           </div>
           <div class="app-info">
             <h2 class="app-name">Kianer Reader</h2>
@@ -21,37 +25,37 @@
           </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="stats-bar glass-card">
-          <div class="stat-item" @click="router.push('/tabs/insights')">
-            <span class="stat-value">{{ libraryStore.books.length }}</span>
+        <!-- Stats -->
+        <div class="stats-row">
+          <div class="stat-cell" @click="router.push('/tabs/insights')">
+            <span class="stat-num">{{ libraryStore.books.length }}</span>
             <span class="stat-label">藏书</span>
           </div>
           <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ totalNotesCount }}</span>
+          <div class="stat-cell">
+            <span class="stat-num">{{ totalNotesCount }}</span>
             <span class="stat-label">笔记</span>
           </div>
           <div class="stat-divider"></div>
-          <div class="stat-item">
-            <span class="stat-value">{{ totalBookmarksCount }}</span>
+          <div class="stat-cell">
+            <span class="stat-num">{{ totalBookmarksCount }}</span>
             <span class="stat-label">书签</span>
           </div>
         </div>
 
         <!-- Storage -->
-        <div class="storage-card glass-card">
-          <h3>存储空间</h3>
-          <div class="storage-body">
+        <div class="card-section">
+          <h3 class="section-label">存储空间</h3>
+          <div class="storage-card">
             <div class="storage-bar-track">
               <div class="storage-bar-fill" :style="{ width: storageBarWidth + '%' }"></div>
             </div>
-            <div class="storage-info">
-              <span class="storage-used">{{ formatSize(totalSize) }}</span>
-              <span class="storage-detail">{{ libraryStore.books.length }} 本书</span>
+            <div class="storage-meta">
+              <span class="storage-used">{{ libraryStore.formatSize(libraryStore.totalSize) }}</span>
+              <span class="storage-count">{{ libraryStore.books.length }} 本书</span>
             </div>
-            <div class="storage-breakdown">
-              <span v-for="item in formatBreakdown" :key="item.format" class="fmt-tag" :class="item.format">
+            <div class="storage-tags">
+              <span v-for="item in formatBreakdown" :key="item.format" class="fmt-badge" :class="item.format">
                 {{ item.label }} {{ item.count }}
               </span>
             </div>
@@ -59,50 +63,66 @@
         </div>
 
         <!-- App Settings -->
-        <div class="settings-group">
-          <h3>应用设置</h3>
-          <div class="settings-list glass-card">
+        <div class="card-section">
+          <h3 class="section-label">应用设置</h3>
+          <div class="settings-card">
             <div class="setting-row">
               <div class="row-left">
-                <Icon icon="solar:moon-linear" style="font-size: 20px" />
+                <span class="row-icon moon-icon">
+                  <Icon icon="solar:moon-linear" />
+                </span>
                 <span>夜间模式</span>
               </div>
-              <el-switch v-model="isAppDarkMode" />
+              <el-switch v-model="isAppDarkMode" class="custom-switch" />
             </div>
             <div class="setting-row">
               <div class="row-left">
-                <Icon icon="solar:info-circle-linear" style="font-size: 20px" />
+                <span class="row-icon info-icon">
+                  <Icon icon="solar:info-circle-linear" />
+                </span>
                 <span>关于 Kianer Reader</span>
               </div>
-              <span class="version-tag">v{{ version }}</span>
+              <span class="version-badge">v{{ version }}</span>
             </div>
           </div>
         </div>
 
         <!-- Data Management -->
-        <div class="settings-group">
-          <h3>数据管理</h3>
-          <div class="settings-list glass-card">
+        <div class="card-section">
+          <h3 class="section-label">数据管理</h3>
+          <div class="settings-card">
             <div class="setting-row" @click="exportData">
               <div class="row-left">
-                <Icon icon="solar:export-linear" style="font-size: 20px" />
+                <span class="row-icon export-icon">
+                  <Icon icon="solar:export-linear" />
+                </span>
                 <span>导出数据备份</span>
               </div>
-              <Icon icon="solar:alt-arrow-right-linear" class="row-arrow" />
+              <span class="row-action">
+                <Icon icon="solar:alt-arrow-right-linear" />
+              </span>
             </div>
             <div class="setting-row" @click="triggerImport">
               <div class="row-left">
-                <Icon icon="solar:import-linear" style="font-size: 20px" />
+                <span class="row-icon import-icon">
+                  <Icon icon="solar:import-linear" />
+                </span>
                 <span>导入数据备份</span>
               </div>
-              <Icon icon="solar:alt-arrow-right-linear" class="row-arrow" />
+              <span class="row-action">
+                <Icon icon="solar:alt-arrow-right-linear" />
+              </span>
             </div>
             <div class="setting-row danger-row" @click="confirmClearData">
               <div class="row-left">
-                <Icon icon="solar:trash-bin-trash-linear" style="font-size: 20px" />
+                <span class="row-icon danger-icon">
+                  <Icon icon="solar:trash-bin-trash-linear" />
+                </span>
                 <span>清理所有数据</span>
               </div>
-              <Icon icon="solar:alt-arrow-right-linear" class="row-arrow" />
+              <span class="row-action">
+                <Icon icon="solar:alt-arrow-right-linear" />
+              </span>
             </div>
           </div>
           <p class="danger-hint">清理将删除所有书籍、笔记和阅读进度，且不可恢复。建议先导出备份。</p>
@@ -117,72 +137,75 @@
           @change="handleImport"
         />
       </div>
+
+      <!-- 清理数据确认弹框 -->
+      <ConfirmSheet
+        :visible="showClearConfirm"
+        title="清理所有数据"
+        message="确定要清理所有数据吗？此操作不可恢复！建议先导出备份。"
+        confirm-text="确认清理"
+        cancel-text="取消"
+        icon="solar:trash-bin-trash-linear"
+        :danger="true"
+        @confirm="handleClearConfirm"
+        @cancel="handleClearCancel"
+      />
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { 
-  IonPage, 
-  IonHeader, 
-  IonToolbar, 
-  IonTitle, 
-  IonContent 
+import { ref, computed, onMounted, watch } from 'vue';
+import {
+  IonPage,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonContent
 } from '@ionic/vue';
 import { Icon } from '@iconify/vue';
-import { useLibraryStore } from '@/stores/library';
+import { useLibraryStore, type Book } from '@/stores/library';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import localforage from 'localforage';
-import { useDark } from '@vueuse/core';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import pako from 'pako';
 import { Share } from '@capacitor/share';
 import { useRouter } from 'vue-router';
 import { version } from '../../package.json';
+import BgOrbs from '@/components/BgOrbs.vue';
+import ConfirmSheet from '@/components/ConfirmSheet.vue';
 
 const libraryStore = useLibraryStore();
 const router = useRouter();
 const importInput = ref<HTMLInputElement | null>(null);
 const isExporting = ref(false);
-const isAppDarkMode = useDark({
-  selector: 'html',
-  attribute: 'class',
-  valueDark: 'ion-palette-dark',
-  valueLight: '',
+
+/** 确认清理数据弹框状态 */
+const showClearConfirm = ref(false);
+
+/** 暗色模式：仅读写 localStorage，由 App.vue 的 useDark watch 同步 class */
+const isAppDarkMode = ref(
+  localStorage.getItem('vueuse/dark') === 'true'
+);
+watch(isAppDarkMode, (val) => {
+  localStorage.setItem('vueuse/dark', String(val));
+  // 同步 class 以防 App.vue 的 useDark watch 在同一 tick 内未触发
+  document.documentElement.classList.toggle('ion-palette-dark', val);
 });
 
 onMounted(async () => {
   await libraryStore.initStore();
 });
 
-const totalNotesCount = computed(() =>
-  libraryStore.books.reduce((acc, b) => acc + (b.notes?.length || 0), 0)
-);
+const totalNotesCount = computed(() => libraryStore.totalNotes);
 
-const totalBookmarksCount = computed(() =>
-  libraryStore.books.reduce((acc, b) => acc + (b.bookmarks?.length || 0), 0)
-);
+const totalBookmarksCount = computed(() => libraryStore.totalBookmarks);
 
-// ── 存储空间 ──
+// ── Storage ──
 
-const totalSize = computed(() =>
-  libraryStore.books.reduce((acc, b) => acc + (b.size || 0), 0)
-);
-
-/** 假设 500MB 为满容量显示参考值 */
 const MAX_STORAGE = 500 * 1024 * 1024;
-const storageBarWidth = computed(() => Math.min(100, (totalSize.value / MAX_STORAGE) * 100));
-
-const formatSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let i = 0;
-  let size = bytes;
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
-  return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-};
+const storageBarWidth = computed(() => Math.min(100, (libraryStore.totalSize / MAX_STORAGE) * 100));
 
 interface FormatItem { format: string; label: string; count: number }
 
@@ -196,30 +219,39 @@ const formatBreakdown = computed((): FormatItem[] => {
   ].filter(i => i.count > 0);
 });
 
+// ── Export / Import / Clear ──
+
 const exportData = async () => {
   if (isExporting.value) return;
   isExporting.value = true;
 
   try {
     ElMessage.info('正在打包数据...');
-    const books = libraryStore.books;
-    const exportData: any = {
+    const booksData = libraryStore.books;
+    interface ExportBook extends Book { _fileDataBase64: string; }
+    interface ExportData {
+      version: number;
+      exportedAt: number;
+      app: string;
+      books: ExportBook[];
+    }
+    const exportData: ExportData = {
       version: 1,
       exportedAt: Date.now(),
       app: 'Kianer Reader',
       books: [],
     };
 
-    for (const book of books) {
-      const raw = await localforage.getItem<any>(`book-data-${book.id}`);
+    for (const book of booksData) {
+      const raw: unknown = await localforage.getItem(`book-data-${book.id}`);
       let base64 = '';
       if (raw) {
-        const blob = raw instanceof Blob ? raw : new Blob([raw]);
+        const blob = raw instanceof Blob ? raw : new Blob([raw as ArrayBuffer]);
         base64 = await new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onload = () => {
             const result = reader.result as string;
-            resolve(result.split(',')[1]); // 去掉 "data:...;base64," 前缀
+            resolve(result.split(',')[1]);
           };
           reader.readAsDataURL(blob);
         });
@@ -231,15 +263,13 @@ const exportData = async () => {
     const fileName = `kianer-backup-${new Date().toISOString().slice(0, 10)}.json`;
 
     if (Capacitor.isNativePlatform()) {
-      // 压缩 JSON 避免 Android Bridge 大数据限制导致 writeFile 失败
       const compressed = pako.gzip(jsonStr);
-      // FileReader 分块读取，避免 String.fromCharCode(...) 对大数组爆栈
       const blob = new Blob([compressed]);
       const base64Data = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          resolve(result.split(',')[1]); // 去掉 "data:...;base64," 前缀
+          resolve(result.split(',')[1]);
         };
         reader.readAsDataURL(blob);
       });
@@ -248,14 +278,13 @@ const exportData = async () => {
         path: fileName,
         data: base64Data,
         directory: Directory.Cache,
-        encoding: Encoding.UTF8, // 将 base64 数据解码为二进制写入
+        encoding: Encoding.UTF8,
       });
       const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
-      // 只传 files，不传 text（部分 Android 版本 text + files 同时传会导致崩溃）
       await Share.share({
         title: 'Kianer Reader 备份',
         files: [uri],
-        dialogTitle: `导出 ${books.length} 本书的备份`,
+        dialogTitle: `导出 ${booksData.length} 本书的备份`,
       });
     } else {
       const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -265,7 +294,7 @@ const exportData = async () => {
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     }
-    ElMessage.success(`已导出 ${books.length} 本书`);
+    ElMessage.success(`已导出 ${booksData.length} 本书`);
   } catch (e) {
     console.error('Export failed:', e);
     const msg = e instanceof Error ? e.message : String(e);
@@ -283,28 +312,21 @@ const handleImport = async (event: Event) => {
   if (!file) return;
 
   try {
-    // 支持三种格式：纯 JSON / base64(gzip) / 二进制 gzip
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     let text: string;
 
-    // 1. 二进制 gzip（魔数 0x1f 0x8b）
     if (bytes.length >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
       text = pako.ungzip(bytes, { to: 'string' });
-    }
-    // 2. 纯 JSON（以 '{' 开头）
-    else if (bytes.length > 0 && bytes[0] === 0x7b) {
+    } else if (bytes.length > 0 && bytes[0] === 0x7b) {
       text = new TextDecoder().decode(bytes);
-    }
-    // 3. base64 编码的 gzip（Android 导出格式）
-    else {
+    } else {
       const base64Str = new TextDecoder().decode(bytes);
       const decoded = atob(base64Str);
       const decodedBytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
       if (decodedBytes.length >= 2 && decodedBytes[0] === 0x1f && decodedBytes[1] === 0x8b) {
         text = pako.ungzip(decodedBytes, { to: 'string' });
       } else {
-        // 最后兜底
         text = base64Str;
       }
     }
@@ -349,304 +371,380 @@ const handleImport = async (event: Event) => {
   }
 };
 
-const confirmClearData = async () => {
-  const confirmed = await ElMessageBox.confirm(
-    '确定要清理所有数据吗？此操作不可恢复！',
-    '警告',
-    { confirmButtonText: '确认清理', cancelButtonText: '取消', type: 'warning', roundButton: true, customClass: 'glass-message-box', confirmButtonClass: 'el-button--danger' }
-  ).catch(() => false);
-  if (!confirmed) return;
+const confirmClearData = () => {
+  showClearConfirm.value = true;
+};
 
+const handleClearConfirm = async () => {
+  showClearConfirm.value = false;
   for (const book of libraryStore.books) await localforage.removeItem(`book-data-${book.id}`);
   await localforage.removeItem('kianer-library-metadata');
   libraryStore.books = [];
   ElMessage.success('所有数据已清理');
 };
+
+const handleClearCancel = () => {
+  showClearConfirm.value = false;
+};
 </script>
 
 <style scoped lang="less">
+// ── Toolbar ──
 .profile-toolbar {
-  --background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-}
+  --background: rgba(248, 246, 243, 0.95);
+  --color: #1e293b;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 
-.profile-content {
-  --background: #f4f7f6;
-  position: relative;
-  .glass-background {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
-    opacity: 0.12;
-    z-index: -1;
+  ion-title {
+    font-weight: 700;
+    font-size: 18px;
+    padding: 0 16px;
   }
 }
 
+// ── Content ──
+.profile-content {
+  --background: #f8f6f3;
+}
+
+// ── Background orbs ──
+// ── Container ──
 .profile-container {
-  padding: 20px;
+  position: relative;
+  z-index: 1;
+  padding: 0 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
-// ── App Header ──
+// ── Card section header ──
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin: 0 0 10px 4px;
+  letter-spacing: 0.5px;
+}
 
-.app-header {
+// ── App Hero ──
+.app-hero {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 22px 24px;
-
-  .app-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #409eff, #60a5fa);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 28px;
-    flex-shrink: 0;
-    box-shadow: 0 6px 20px rgba(64, 158, 255, 0.25);
-  }
-
-  .app-info {
-    flex: 1;
-    min-width: 0;
-
-    .app-name {
-      margin: 0 0 4px;
-      font-size: 20px;
-      font-weight: 800;
-      color: #1e293b;
-    }
-
-    .app-motto {
-      margin: 0;
-      font-size: 13px;
-      color: #94a3b8;
-      font-weight: 500;
-    }
-  }
+  gap: 18px;
+  padding: 28px 0 8px;
 }
 
+.app-icon-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
 
-// ── Storage ──
+.app-icon-bg {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 30px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+}
 
-.storage-card {
-  padding: 20px 22px;
+.app-icon-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 22px;
+  border: 2px solid rgba(167, 139, 250, 0.2);
+  animation: pulseRing 3s ease-in-out infinite;
+}
 
-  h3 {
-    margin: 0 0 14px;
+@keyframes pulseRing {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 0; }
+}
+
+.app-info {
+  flex: 1;
+  min-width: 0;
+
+  .app-name {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.02em;
+  }
+
+  .app-motto {
+    margin: 0;
     font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    letter-spacing: 0.5px;
-  }
-
-  .storage-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .storage-bar-track {
-    height: 8px;
-    background: #e5e7eb;
-    border-radius: 4px;
-    overflow: hidden;
-
-    .storage-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      background: linear-gradient(90deg, #10b981, #34d399);
-      transition: width 0.8s ease;
-    }
-  }
-
-  .storage-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    .storage-used {
-      font-size: 18px;
-      font-weight: 800;
-      color: #1e293b;
-    }
-
-    .storage-detail {
-      font-size: 12px;
-      color: #64748b;
-    }
-  }
-
-  .storage-breakdown {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .fmt-tag {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 8px;
-    letter-spacing: 0.3px;
-
-    &.txt  { background: #fffbeb; color: #b45309; }
-    &.epub { background: #f0fdf4; color: #166534; }
-    &.pdf  { background: #fef2f2; color: #991b1b; }
+    color: #94a3b8;
+    font-weight: 500;
   }
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.07);
-}
-
-/* ── Stats Bar ── */
-
-.stats-bar {
+// ── Stats Row ──
+.stats-row {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 18px 10px;
+  padding: 18px 8px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  animation: fadeUp 0.5s ease both;
+}
 
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-    -webkit-tap-highlight-color: transparent;
-    &:active { opacity: 0.6; }
-  }
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 
-  .stat-value {
+  &:active { transform: scale(0.95); }
+
+  .stat-num {
     font-size: 24px;
     font-weight: 800;
     color: #1e293b;
+    letter-spacing: -0.02em;
   }
 
   .stat-label {
     font-size: 12px;
-    color: #64748b;
+    color: #94a3b8;
     font-weight: 500;
   }
+}
 
-  .stat-divider {
-    width: 1px;
-    height: 34px;
-    background: rgba(0, 0, 0, 0.08);
+.stat-divider {
+  width: 1px;
+  height: 34px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+// ── Storage Card ──
+.storage-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  animation: fadeUp 0.5s ease both;
+  animation-delay: 0.05s;
+}
+
+.storage-bar-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.storage-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #a78bfa, #60a5fa);
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.storage-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+
+  .storage-used {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.02em;
+  }
+
+  .storage-count {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 500;
   }
 }
 
-/* ── Settings Group ── */
+.storage-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
-.settings-group {
-  h3 {
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
-    margin: 0 0 10px 14px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+.fmt-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 8px;
+  letter-spacing: 0.3px;
+
+  &.txt  { background: #fffbeb; color: #b45309; }
+  &.epub { background: #f0fdf4; color: #166534; }
+  &.pdf  { background: #fef2f2; color: #991b1b; }
+}
+
+// ── Settings Card ──
+.settings-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+  animation-delay: 0.1s;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+
+  & + .setting-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
   }
 
-  .settings-list {
-    overflow: hidden;
+  &:active {
+    background: rgba(0, 0, 0, 0.025);
   }
 
-  .setting-row {
+  .row-left {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
-    cursor: pointer;
-    transition: background 0.2s;
-    -webkit-tap-highlight-color: transparent;
+    gap: 12px;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 500;
 
-    & + .setting-row {
-      border-top: 1px solid rgba(0, 0, 0, 0.04);
-    }
-
-    &:active {
-      background: rgba(0, 0, 0, 0.03);
-    }
-
-    .row-left {
+    .row-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      color: #334155;
-      font-size: 14px;
-      font-weight: 500;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+
+      &.moon-icon   { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+      &.info-icon   { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+      &.export-icon { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+      &.import-icon { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+      &.danger-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
     }
-
-    .row-arrow {
-      color: #94a3b8;
-      font-size: 18px;
-    }
   }
 
-  .danger-row .row-left {
-    color: #ef4444;
-  }
-
-  .version-tag {
-    font-size: 12px;
+  .row-action {
     color: #94a3b8;
-    background: rgba(0, 0, 0, 0.04);
-    padding: 2px 10px;
-    border-radius: 10px;
-  }
-
-  .danger-hint {
-    font-size: 12px;
-    color: #94a3b8;
-    margin: 10px 14px 0;
-    line-height: 1.5;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
   }
 }
 
-/* ── Dark Mode ── */
-html.ion-palette-dark {
-  .profile-toolbar { --background: rgba(30, 30, 30, 0.7); }
-  .profile-content { --background: #121212; }
-  .profile-content .glass-background {
-    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-    opacity: 0.3;
-  }
-  .glass-card {
-    background: rgba(40, 40, 40, 0.7);
-    border-color: rgba(255, 255, 255, 0.08);
-  }
-  .app-header {
-    .app-name { color: #e2e8f0; }
-    .app-motto { color: #64748b; }
-  }
-  .stats-bar .stat-value { color: #e2e8f0; }
-  .stats-bar .stat-label { color: #94a3b8; }
-  .stats-bar .stat-divider { background: rgba(255, 255, 255, 0.1); }
-  .storage-card .storage-bar-track { background: #334155; }
-  .storage-card .storage-used { color: #e2e8f0; }
-  .storage-card .storage-detail { color: #64748b; }
-  .fmt-tag.txt  { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
-  .fmt-tag.epub { background: rgba(52, 211, 153, 0.12); color: #34d399; }
-  .fmt-tag.pdf  { background: rgba(248, 113, 113, 0.12); color: #f87171; }
-  .settings-group h3 { color: #94a3b8; }
-  .setting-row { border-color: rgba(255, 255, 255, 0.04); }
-  .setting-row .row-left { color: #e2e8f0; }
-  .setting-row:active { background: rgba(255, 255, 255, 0.05); }
-  .row-arrow { color: #64748b; }
-  .danger-row .row-left { color: #f87171; }
-  .version-tag { color: #64748b; background: rgba(255, 255, 255, 0.08); }
-  .danger-hint { color: #64748b; }
+.danger-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 10px 4px 0;
+  line-height: 1.5;
 }
+
+.version-badge {
+  font-size: 12px;
+  color: #94a3b8;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.card-section {
+  display: flex;
+  flex-direction: column;
+}
+
+// ── Animations ──
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<style lang="less">
+/* ── Dark Mode (non-scoped) ── */
+
+html.ion-palette-dark .profile-toolbar {
+  --color: #e2e8f0;
+  --background: rgba(12, 10, 26, 0.95);
+}
+
+html.ion-palette-dark .profile-content {
+  --background: #0c0a1a;
+}
+
+html.ion-palette-dark .bg-orb-1 { opacity: 0.08; }
+html.ion-palette-dark .bg-orb-2 { opacity: 0.08; }
+html.ion-palette-dark .bg-orb-3 { opacity: 0.05; }
+
+html.ion-palette-dark .app-info .app-name { color: #e2e8f0; }
+html.ion-palette-dark .app-info .app-motto { color: #64748b; }
+
+html.ion-palette-dark .app-icon-ring { border-color: rgba(167, 139, 250, 0.15); }
+
+html.ion-palette-dark .stats-row {
+  background: rgba(30, 30, 50, 0.7);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+html.ion-palette-dark .stat-cell .stat-num { color: #e2e8f0; }
+html.ion-palette-dark .stat-cell .stat-label { color: #64748b; }
+html.ion-palette-dark .stat-divider { background: rgba(255, 255, 255, 0.08); }
+
+html.ion-palette-dark .storage-card {
+  background: rgba(30, 30, 50, 0.7);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+html.ion-palette-dark .storage-bar-track { background: #1e1e38; }
+html.ion-palette-dark .storage-meta .storage-used { color: #e2e8f0; }
+html.ion-palette-dark .storage-meta .storage-count { color: #64748b; }
+
+html.ion-palette-dark .fmt-badge.txt  { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
+html.ion-palette-dark .fmt-badge.epub { background: rgba(52, 211, 153, 0.12); color: #34d399; }
+html.ion-palette-dark .fmt-badge.pdf  { background: rgba(248, 113, 113, 0.12); color: #f87171; }
+
+html.ion-palette-dark .settings-card {
+  background: rgba(30, 30, 50, 0.7);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+html.ion-palette-dark .setting-row .row-left { color: #e2e8f0; }
+html.ion-palette-dark .setting-row + .setting-row { border-color: rgba(255, 255, 255, 0.04); }
+html.ion-palette-dark .setting-row:active { background: rgba(255, 255, 255, 0.04); }
+html.ion-palette-dark .setting-row .row-action { color: #64748b; }
+html.ion-palette-dark .section-label { color: #64748b; }
+html.ion-palette-dark .version-badge { color: #64748b; background: rgba(255, 255, 255, 0.06); }
+html.ion-palette-dark .danger-row .row-left { color: #f87171; }
+html.ion-palette-dark .danger-row .row-left .danger-icon { background: rgba(239, 68, 68, 0.12); }
+html.ion-palette-dark .danger-hint { color: #64748b; }
 </style>

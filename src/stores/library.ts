@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import localforage from 'localforage';
 
 export interface Bookmark {
@@ -44,6 +44,35 @@ export const useLibraryStore = defineStore('library', () => {
   const books = ref<Book[]>([]);
   // 标记存储是否已初始化的响应式引用
   const isInitialized = ref(false);
+
+  // ── 共享计算属性 ──
+
+  /** 所有书的总笔记数 */
+  const totalNotes = computed(() =>
+    books.value.reduce((acc, b) => acc + (b.notes?.length || 0), 0)
+  );
+
+  /** 所有书的总书签数 */
+  const totalBookmarks = computed(() =>
+    books.value.reduce((acc, b) => acc + (b.bookmarks?.length || 0), 0)
+  );
+
+  /** 所有书的总大小（字节） */
+  const totalSize = computed(() =>
+    books.value.reduce((acc, b) => acc + (b.size || 0), 0)
+  );
+
+  /** 格式化文件大小 */
+  const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    let size = bytes;
+    while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+    return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  };
+
+  // ── 初始化 ──
 
   // Initialize store from IndexedDB (metadata)
   const initStore = async () => {
@@ -158,6 +187,11 @@ export const useLibraryStore = defineStore('library', () => {
 
   return {
     books,
+    isInitialized,
+    totalNotes,
+    totalBookmarks,
+    totalSize,
+    formatSize,
     initStore,
     addBook,
     removeBook,

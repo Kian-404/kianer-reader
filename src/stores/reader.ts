@@ -60,6 +60,10 @@ export const useReaderStore = defineStore('reader', () => {
     theme.value = newTheme;
   };
 
+  const setPdfScale = (scale: number) => {
+    pdfScale.value = scale;
+  };
+
   return {
     fontSize,
     theme,
@@ -71,5 +75,6 @@ export const useReaderStore = defineStore('reader', () => {
     pdfScale,
     setFontSize,
     setTheme,
+    setPdfScale,
   };
 });

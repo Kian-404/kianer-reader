@@ -129,7 +129,7 @@
 
       <!-- Selection Menu Popup -->
       <SelectionMenu
-        v-if="showSelectionMenu"
+        :visible="showSelectionMenu"
         :text="selectionText"
         :comment="noteComment"
         :selected-color="noteColor"
@@ -393,6 +393,8 @@ const initEngineByFormat = async (arrayBuffer: ArrayBuffer) => {
       break;
     case 'pdf':
       await pdfEngine.initPdf(arrayBuffer);
+      // PDF 渲染完成后绑定选择事件
+      setTimeout(() => setupPdfSelection(), 300);
       break;
   }
 };
@@ -414,9 +416,21 @@ const initImmersiveMode = async () => {
  * 绑定引擎事件
  */
 const bindEngineEvents = () => {
-  // EPUB 文本选择事件
+  // EPUB 文本选择事件（带降级处理）
   epubEngine.onSelected((cfi, text) => {
     selectionCfi.value = cfi;
+    // 如果 getRange 返回空文本，尝试从 iframe 内获取选中文本
+    if (!text || !text.trim()) {
+      try {
+        const contents: any[] = epubEngine.rendition.value?.getContents?.() as any;
+        if (contents?.[0]?.window) {
+          const sel = contents[0].window.getSelection();
+          if (sel && !sel.isCollapsed) {
+            text = sel.toString().trim();
+          }
+        }
+      } catch { /* 静默降级 */ }
+    }
     selectionText.value = text;
     showSelectionMenu.value = true;
     noteComment.value = '';
@@ -432,48 +446,102 @@ const bindEngineEvents = () => {
 /** 用于存储 TXT 选择事件清理函数，翻页或卸载时解除绑定 */
 let txtSelectionCleanup: (() => void) | null = null;
 
+/** 标记当前是否有文本被选中（用于阻止 handleContainerClick 触发翻页） */
+let isTextSelected = false;
+
+/** selectionchange 防抖定时器 */
+let selectionChangeTimer: ReturnType<typeof setTimeout> | null = null;
+
 /**
  * TXT 文字选择检测
- * 每次调用先清理之前的监听器，避免重复绑定
+ *
+ * 核心设计：EPUB 用 iframe 渲染，主文档的 window.getSelection() 看不到 iframe 内的选区。
+ * 所以 document 上的 selectionchange 事件天然只会捕获 TXT（和 PDF）选中的文本。
+ * 我们只需排除 SelectionMenu 自身的 textarea 产生选区即可。
  */
 const setupTxtSelection = () => {
-  // 清理旧监听器
   txtSelectionCleanup?.();
 
-  const bodies = document.querySelectorAll('.txt-page.active .content-body');
-  if (!bodies.length) return;
+  isTextSelected = false;
 
-  const onTxtMouseUp = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+  const onSelectionChange = () => {
+    // 非 TXT 模式不处理
+    if (book.value?.format !== 'txt') return;
+    // 弹框已在展示则不重复触发
+    if (showSelectionMenu.value) return;
 
-    setTimeout(() => {
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed) return;
-      selectionText.value = sel.toString().trim();
-      txtNotePage.value = txtCurrentPage.value;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
 
-      noteComment.value = '';
-      noteColor.value = '#ffe082';
+    // 排除 SelectionMenu 自身的 textarea 产生的选区
+    const overlay = document.querySelector('.selection-overlay');
+    if (overlay && overlay.contains(sel.anchorNode)) return;
+
+    isTextSelected = true;
+    selectionText.value = sel.toString().trim();
+    txtNotePage.value = txtCurrentPage.value;
+    noteComment.value = '';
+    noteColor.value = '#ffe082';
+
+    // 防抖：移动端长按拖拽时持续触发 selectionchange，等稳定了再展示弹框
+    if (selectionChangeTimer) clearTimeout(selectionChangeTimer);
+    selectionChangeTimer = setTimeout(() => {
+      selectionChangeTimer = null;
+      if (!selectionText.value) return;
       showSelectionMenu.value = true;
-    }, 10);
+    }, 200);
   };
 
-  const onContextMenu = (e: Event) => { e.preventDefault(); };
-
-  bodies.forEach((el) => {
-    el.addEventListener('contextmenu', onContextMenu);
-    el.addEventListener('mouseup', onTxtMouseUp);
-    el.addEventListener('touchend', onTxtMouseUp);
-  });
+  document.addEventListener('selectionchange', onSelectionChange);
 
   txtSelectionCleanup = () => {
-    bodies.forEach((el) => {
-      el.removeEventListener('contextmenu', onContextMenu);
-      el.removeEventListener('mouseup', onTxtMouseUp);
-      el.removeEventListener('touchend', onTxtMouseUp);
-    });
+    if (selectionChangeTimer) {
+      clearTimeout(selectionChangeTimer);
+      selectionChangeTimer = null;
+    }
+    document.removeEventListener('selectionchange', onSelectionChange);
     txtSelectionCleanup = null;
+  };
+};
+
+/** 用于存储 PDF 选择事件清理函数 */
+let pdfSelectionCleanup: (() => void) | null = null;
+
+/**
+ * PDF 文字选择检测
+ * PDF 使用 textLayer（透明文本层覆盖在 canvas 上）
+ */
+const setupPdfSelection = () => {
+  pdfSelectionCleanup?.();
+
+  const textLayers = document.querySelectorAll('.pdf-page-container .textLayer');
+  if (!textLayers.length) return;
+
+  const onPdfMouseUp = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) {
+      isTextSelected = false;
+      return;
+    }
+
+    isTextSelected = true;
+    selectionText.value = selection.toString().trim();
+    noteComment.value = '';
+    noteColor.value = '#ffe082';
+    showSelectionMenu.value = true;
+  };
+
+  textLayers.forEach((el) => {
+    el.addEventListener('mouseup', onPdfMouseUp);
+    el.addEventListener('touchend', onPdfMouseUp);
+  });
+
+  pdfSelectionCleanup = () => {
+    textLayers.forEach((el) => {
+      el.removeEventListener('mouseup', onPdfMouseUp);
+      el.removeEventListener('touchend', onPdfMouseUp);
+    });
+    pdfSelectionCleanup = null;
   };
 };
 
@@ -485,8 +553,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // 清理 TXT 选择事件监听器
+  // 清理选择事件监听器
   txtSelectionCleanup?.();
+  pdfSelectionCleanup?.();
   // 清理资源
   epubEngine.rendition.value?.destroy();
   (window as any).pdfDoc = null;
@@ -543,6 +612,12 @@ const jumpToSearchResult = (res: any) => {
 const handleContainerClick = (e: MouseEvent | TouchEvent) => {
   if (book.value?.format === 'epub') return;
 
+  // 如果刚刚选中了文本，不触发放置或翻页
+  if (isTextSelected) {
+    isTextSelected = false;
+    return;
+  }
+
   const clientX = 'touches' in e && e.touches.length > 0
     ? e.touches[0].clientX
     : (e as MouseEvent).clientX;
@@ -574,6 +649,8 @@ const handleGlobalClick = (clientX: number) => {
 const handleScroll = () => {
   if (book.value?.format === 'pdf') {
     pdfEngine.handleScroll?.();
+    // PDF 翻页后重新绑定选择事件（textLayer 被重建）
+    requestAnimationFrame(() => setupPdfSelection());
   } else if (book.value?.format === 'txt' && readerStore.paginationMode === 'vertical') {
     const container = document.querySelector('.render-container');
     if (container) txtEngine.handleScroll(container as HTMLElement);
@@ -613,6 +690,7 @@ const handlePaginationChange = () => {
     epubEngine.handlePaginationChange();
   } else if (book.value?.format === 'pdf') {
     pdfEngine.handlePaginationChange();
+    requestAnimationFrame(() => setupPdfSelection());
   }
 };
 
@@ -620,6 +698,7 @@ const handleSizeChange = () => {
   // PDF 需要特殊处理
   if (book.value?.format === 'pdf') {
     pdfEngine.handlePaginationChange();
+    requestAnimationFrame(() => setupPdfSelection());
   }
 };
 
@@ -803,6 +882,7 @@ const removeNote = (id: string) => {
   padding: 20px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  touch-action: manipulation;
 
   &.mode-horizontal {
     display: flex;
@@ -830,6 +910,8 @@ const removeNote = (id: string) => {
         font-size: var(--font-size);
         line-height: var(--line-height);
         white-space: pre-wrap;
+        -webkit-user-select: text;
+        user-select: text;
       }
     }
   }
@@ -846,6 +928,8 @@ const removeNote = (id: string) => {
         white-space: pre-wrap;
         max-width: 700px;
         margin: 0 auto;
+        -webkit-user-select: text;
+        user-select: text;
       }
     }
   }

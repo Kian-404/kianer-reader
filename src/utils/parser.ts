@@ -14,7 +14,7 @@ export interface BookMetadata {
 
 export const extractMetadata = async (file: File, format: 'txt' | 'epub' | 'pdf'): Promise<BookMetadata> => {
   const metadata: BookMetadata = {
-    title: file.name.replace(/\.[^/.]+$/, ""),
+    title: file.name.replace(/\.[^/.]+$/, ''),
     author: '未知作者'
   };
 
@@ -72,3 +72,55 @@ export const extractMetadata = async (file: File, format: 'txt' | 'epub' | 'pdf'
 
   return metadata;
 };
+
+type BookFormat = 'txt' | 'epub' | 'pdf';
+
+/**
+ * 根据文件名扩展名检测格式（轻量，Wi-Fi 传书用）
+ */
+export function detectFormatByName(name: string): BookFormat | null {
+  const lower = name.toLowerCase().trim();
+  if (lower.endsWith('.txt')) return 'txt';
+  if (lower.endsWith('.epub')) return 'epub';
+  if (lower.endsWith('.pdf')) return 'pdf';
+  return null;
+}
+
+/**
+ * 综合检测文件格式：Magic number → 扩展名 → MIME type 三级兜底
+ * 用于文件导入（用户可能无扩展名或 MIME 不准确）
+ */
+export async function detectFormat(file: File): Promise<BookFormat | null> {
+  const fileName = (file.name || '').toLowerCase().trim();
+
+  // 1. 扩展名快速判断
+  const byExt = detectFormatByName(fileName);
+  if (byExt) return byExt;
+
+  // 2. Magic number 嗅探
+  try {
+    const headerBlob = file.slice(0, 4);
+    const headerBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(headerBlob);
+    });
+    const view = new Uint8Array(headerBuffer);
+    if (view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46) return 'pdf';
+    if (view[0] === 0x50 && view[1] === 0x4b) return 'epub';
+  } catch {
+    // 降级
+  }
+
+  // 3. MIME type 兜底
+  const mime = (file.type || '').toLowerCase();
+  if (mime === 'text/plain' || mime.includes('text/') || mime.includes('json')) return 'txt';
+  if (mime === 'application/epub+zip' || mime === 'application/zip' || mime === 'application/x-zip-compressed') return 'epub';
+  if (mime === 'application/pdf' || mime === 'application/x-pdf') return 'pdf';
+  if (mime === 'application/octet-stream') {
+    if (fileName.includes('epub') || !fileName.includes('.')) return 'epub';
+  }
+
+  return null;
+}
